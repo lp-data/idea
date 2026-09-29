@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>שאלות 30.9 — תצוגה מקדימה</title>
-<script src="https://cdn.jsdelivr.net/npm/@mux/mux-player" defer></script>
 <style>
   :root{
     --bg:#f4f5f7;
@@ -83,10 +82,12 @@
     position:relative;
     background:var(--media-dark);
   }
-  mux-player{
+  .media img{
     width:100%;
     aspect-ratio:16/9;
-    --media-object-fit: contain;
+    display:block;
+    object-fit:cover;
+    background:#000;
   }
   .body{
     padding:18px 18px 22px;
@@ -224,7 +225,7 @@
   <article class="card">
     <div class="card-tag"><span class="q-num">Q1</span><span class="visibility-all">מוצג לכולם</span></div>
     <div class="media">
-      <mux-player playback-id="3bpwbD01TJ6eNLtZmy4VqAhWY00B3VAwxQkxIZSLz4Sug" muted preload="metadata" style="--controls: block;"></mux-player>
+      <img src="https://image.mux.com/3bpwbD01TJ6eNLtZmy4VqAhWY00B3VAwxQkxIZSLz4Sug/thumbnail.jpg?width=960" alt="תמונת תצוגה מקדימה של סרטון 1">
     </div>
     <div class="body">
       <p class="question-text">האם הסרטון נתפס בעיניך כאמין? למה כן או למה לא? <span class="req">*</span></p>
@@ -236,7 +237,7 @@
   <article class="card">
     <div class="card-tag"><span class="q-num">Q2</span><span class="visibility-all">מוצג לכולם</span></div>
     <div class="media">
-      <mux-player playback-id="zSxnmhDSMhk70214M016TuYObFEbZ201xrITIgCuNt5sUc" muted preload="metadata" style="--controls: block;"></mux-player>
+      <img src="https://image.mux.com/zSxnmhDSMhk70214M016TuYObFEbZ201xrITIgCuNt5sUc/thumbnail.jpg?width=960" alt="תמונת תצוגה מקדימה של סרטון 2">
     </div>
     <div class="body">
       <p class="question-text">האם הסרטון נתפס בעיניך כאמין? למה כן או למה לא? <span class="req">*</span></p>
