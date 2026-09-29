@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שאלות 30.9 — תצוגה מקדימה</title>
+<script src="https://cdn.jsdelivr.net/npm/@mux/mux-player" defer></script>
+<style>
+  :root{
+    --bg:#f4f5f7;
+    --card-bg:#ffffff;
+    --text:#1c1e21;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+    --group-a:#2563eb;
+    --group-b:#db2777;
+    --media-dark:#15161c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:"Segoe UI", Arial, Helvetica, sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.5;
+  }
+  header{
+    background:#fff;
+    border-bottom:1px solid var(--border);
+    padding:20px 24px;
+    text-align:center;
+  }
+  header h1{
+    margin:0 0 6px;
+    font-size:22px;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:14px;
+    max-width:700px;
+    margin-inline:auto;
+  }
+  .banner{
+    background:#fff7e6;
+    border:1px solid #f5d78e;
+    color:#7a5b00;
+    font-size:13px;
+    text-align:center;
+    padding:8px 16px;
+  }
+  main{
+    max-width:760px;
+    margin:0 auto;
+    padding:28px 16px 60px;
+  }
+  .card{
+    background:var(--card-bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    overflow:hidden;
+    margin-bottom:22px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card-tag{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 16px;
+    font-size:12px;
+    color:var(--muted);
+    border-bottom:1px solid var(--border);
+  }
+  .card-tag .q-num{
+    font-weight:700;
+    color:var(--text);
+    font-size:13px;
+  }
+  .visibility-all{ color:#059669; font-weight:600; }
+  .visibility-split{ color:#9333ea; font-weight:600; }
+
+  .media{
+    position:relative;
+    background:var(--media-dark);
+  }
+  mux-player{
+    width:100%;
+    aspect-ratio:16/9;
+    --media-object-fit: contain;
+  }
+  .body{
+    padding:18px 18px 22px;
+  }
+  .question-text{
+    font-size:15px;
+    font-weight:600;
+    margin:0 0 14px;
+    white-space:pre-wrap;
+  }
+  .question-text .req{ color:#dc2626; }
+  .hint{
+    font-size:12px;
+    color:var(--muted);
+    margin:-8px 0 14px;
+  }
+
+  textarea{
+    width:100%;
+    min-height:70px;
+    resize:vertical;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+    font-family:inherit;
+    font-size:14px;
+    background:#fafafa;
+    color:var(--muted);
+  }
+
+  .option-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:4px;
+  }
+  .option-list label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:14px;
+    padding:8px 10px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:#fafafa;
+    color:var(--text);
+  }
+  .option-list input{
+    pointer-events:none;
+    width:16px;
+    height:16px;
+    flex-shrink:0;
+  }
+  .select-note{
+    font-size:12px;
+    color:var(--muted);
+    margin:6px 0 0;
+  }
+
+  table.matrix{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+    margin-top:4px;
+  }
+  table.matrix th, table.matrix td{
+    border:1px solid var(--border);
+    padding:8px 6px;
+    text-align:center;
+  }
+  table.matrix th{
+    background:#fafafa;
+    font-weight:600;
+    font-size:12px;
+  }
+  table.matrix td:first-child, table.matrix th:first-child{
+    text-align:right;
+    font-weight:500;
+  }
+  table.matrix input{
+    pointer-events:none;
+  }
+
+  /* split-by-group question */
+  .split-wrap{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  @media (max-width:600px){
+    .split-wrap{ grid-template-columns:1fr; }
+  }
+  .split-item{
+    border-radius:10px;
+    padding:14px;
+  }
+  .split-item.a{ background:#eff4ff; border:1px solid #c7d7fe; }
+  .split-item.b{ background:#fdf0f7; border:1px solid #f7c9e1; }
+  .split-item .group-label{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    color:#fff;
+    padding:2px 10px;
+    border-radius:6px;
+    margin-bottom:10px;
+  }
+  .split-item.a .group-label{ background:var(--group-a); }
+  .split-item.b .group-label{ background:var(--group-b); }
+  .split-item p{
+    font-size:14px;
+    font-weight:500;
+    margin:0 0 10px;
+  }
+
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    padding:20px 16px 40px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>שאלות 30.9 — תצוגה מקדימה של השאלות</h1>
+  <p>אידאה 23-30.9 · כל השאלות משותפות לשתי הקבוצות, פרט לשאלה אחת (מסומנת בסגול) שמשתנה בין קבוצה A לקבוצה B</p>
+</header>
+<div class="banner">תצוגה מקדימה בלבד — אין למלא בפועל, זהו שחזור של מסך התצוגה של הסקר</div>
+
+<main>
+
+  <!-- Q1 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q1</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="media">
+      <mux-player playback-id="3bpwbD01TJ6eNLtZmy4VqAhWY00B3VAwxQkxIZSLz4Sug" muted preload="metadata" style="--controls: block;"></mux-player>
+    </div>
+    <div class="body">
+      <p class="question-text">האם הסרטון נתפס בעיניך כאמין? למה כן או למה לא? <span class="req">*</span></p>
+      <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+    </div>
+  </article>
+
+  <!-- Q2 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q2</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="media">
+      <mux-player playback-id="zSxnmhDSMhk70214M016TuYObFEbZ201xrITIgCuNt5sUc" muted preload="metadata" style="--controls: block;"></mux-player>
+    </div>
+    <div class="body">
+      <p class="question-text">האם הסרטון נתפס בעיניך כאמין? למה כן או למה לא? <span class="req">*</span></p>
+      <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+    </div>
+  </article>
+
+  <!-- Q3 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q3</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="body">
+      <p class="question-text">לאיזה מ2 הסרטונים התחברת יותר? אנא הסבר/י למה? <span class="req">*</span></p>
+      <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+    </div>
+  </article>
+
+  <!-- Q4 / Q5 — the one question that differs by group -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q4 / Q5</span><span class="visibility-split">משתנה לפי קבוצה</span></div>
+    <div class="body">
+      <p class="question-text">דמיינו כי המועמד שאתם מתכוונים להצביע לו מותקף ע״י מועמדים אחרים. איך הייתם ממליצים לו להגיב? <span class="req">*</span></p>
+      <div class="split-wrap">
+        <div class="split-item a">
+          <span class="group-label">קבוצה A</span>
+          <p>דמיינו כי המועמד שאתם מתכוונים להצביע לו מותקף <strong>על העמדות שלו</strong> ע״י מועמדים אחרים. איך הייתם ממליצים לו להגיב?</p>
+          <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+        </div>
+        <div class="split-item b">
+          <span class="group-label">קבוצה B</span>
+          <p>דמיינו כי המועמד שאתם מתכוונים להצביע לו מותקף <strong>אישית (על האופי, המשפחה, ההתנהלות שלו)</strong> ע״י מועמדים מתחרים. איך הייתם ממליצים לו להגיב?</p>
+          <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- Q6 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q6</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="body">
+      <p class="question-text">מה צריך לקרות כדי שתראה/י תוכן פוליטי ותחשוב/י: "הוא באמת מדבר אליי"? נסו לתת דוגמה למשהו שראיתם או שהייתם רוצים לראות. <span class="req">*</span></p>
+      <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+    </div>
+  </article>
+
+  <!-- Q7 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q7</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="body">
+      <p class="question-text">בהקשר של תוכן פוליטי ברשת: מה היה גורם לכם לשתף, להגיב, ללחוץ "עקוב" או לעשות ריפוסט? <span class="req">*</span></p>
+      <p class="hint">(בחרו עד 2 אפשרויות)</p>
+      <div class="option-list">
+        <label><input type="checkbox" disabled>תוכן שמציג נתונים ועובדות</label>
+        <label><input type="checkbox" disabled>סיפור אישי או עדות של אדם אמיתי</label>
+        <label><input type="checkbox" disabled>מסר רגשי ומעורר השראה</label>
+        <label><input type="checkbox" disabled>הומור וסאטירה</label>
+        <label><input type="checkbox" disabled>ביקורת חדה על מתחרים</label>
+        <label><input type="checkbox" disabled>מסר חיובי ורגוע על מה שהפוליטיקאי מתכוון לעשות</label>
+        <label><input type="checkbox" disabled>תוכן מהשטח: מפגשים ושיחות ישירות עם אנשים</label>
+        <label><input type="checkbox" disabled>סיסמה קצרה וקליטה</label>
+        <label><input type="checkbox" disabled>אחר</label>
+      </div>
+      <p class="select-note">0 מתוך 2 נבחרו</p>
+    </div>
+  </article>
+
+  <!-- Q8 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q8</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="body">
+      <p class="question-text">לפי תחזיות, בכנסת הבאה נשים יהוו כרבע מחברי הכנסת (בין 30 ל-34 מתוך 120). בנוסף, אף אחת מהמפלגות שצפויות לעבור את אחוז החסימה אינן בראשות אישה. מה דעתך על כך? אנא פרט/י ב1-2 משפטים <span class="req">*</span></p>
+      <textarea disabled placeholder="הקלד/י את תשובתך כאן"></textarea>
+    </div>
+  </article>
+
+  <!-- Q9 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q9</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="body">
+      <p class="question-text">האם הנתון הזה מפריע לך והאם הוא משפיע על השיקולים שלך למי להצביע? <span class="req">*</span></p>
+      <div class="option-list">
+        <label><input type="radio" name="q9" disabled>לא מפריע לי ולא משפיע עליי בכלל</label>
+        <label><input type="radio" name="q9" disabled>מפריע לי קצת אבל בטוח לא ישפיע על הבחירה שלי</label>
+        <label><input type="radio" name="q9" disabled>מפריע לי, אבל לא בטוח שישפיע על הבחירה שלי</label>
+        <label><input type="radio" name="q9" disabled>מפריע לי מאוד, לא אצביע למפלגה שאין בה ייצוג נשי משמעותי</label>
+      </div>
+    </div>
+  </article>
+
+  <!-- Q10 -->
+  <article class="card">
+    <div class="card-tag"><span class="q-num">Q10</span><span class="visibility-all">מוצג לכולם</span></div>
+    <div class="body">
+      <p class="question-text">באיזו מידה אתה מסכים או לא מסכים עם האמירה: "לאוכלוסייה הערבית בישראל צריך להיות ייצוג בכל אחד מהגופים הבאים"? <span class="req">*</span></p>
+      <table class="matrix">
+        <thead>
+          <tr><th></th><th>לא מסכים בכלל</th><th>לא מסכים</th><th>מסכים</th><th>מסכים מאוד</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>בכנסת</td><td><input type="radio" name="q10-1" disabled></td><td><input type="radio" name="q10-1" disabled></td><td><input type="radio" name="q10-1" disabled></td><td><input type="radio" name="q10-1" disabled></td></tr>
+          <tr><td>בממשלה (שרים)</td><td><input type="radio" name="q10-2" disabled></td><td><input type="radio" name="q10-2" disabled></td><td><input type="radio" name="q10-2" disabled></td><td><input type="radio" name="q10-2" disabled></td></tr>
+          <tr><td>בתפקידים בכירים במגזר הציבורי</td><td><input type="radio" name="q10-3" disabled></td><td><input type="radio" name="q10-3" disabled></td><td><input type="radio" name="q10-3" disabled></td><td><input type="radio" name="q10-3" disabled></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+</main>
+
+<footer>נוצר אוטומטית מתוך תצוגת ה-Preview של הסקר · שאלות 30.9</footer>
+
+</body>
+</html>
