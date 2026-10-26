@@ -1,0 +1,7 @@
+{
+  "name": "pm-discovery-strategy",
+  "description": "14 product management skills for discovery and strategy: problem framing, personas, JTBD, interviews, journey maps, opportunity trees, positioning, market sizing, PESTEL, Lean UX and AI recommendation canvas.",
+  "version": "0.84.0",
+  "author": { "name": "Adapted from Product-Manager-Skills by Dean Peters" },
+  "license": "CC-BY-NC-SA-4.0"
+}
