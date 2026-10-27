@@ -204,7 +204,7 @@ const plant = id => DB.plants.find(p => p.id === id);
 try { navigator.storage?.persist?.(); } catch (e) {}
 { // migrate Hebrew names from the earlier Hebrew build
   const LOC = { 'סלון': 'Living Room', 'מטבח': 'Kitchen', 'חדר שינה': 'Bedroom', 'מרפסת': 'Balcony', 'חדר עבודה': 'Office', 'אמבטיה': 'Bathroom', 'שירותים': 'Bathroom', 'מחסן': 'Storage' };
-  DB.plants.forEach(p => { if (LOC[p.location]) p.location = LOC[p.location]; if (p.name === 'דיפנבכיה גדולה') p.name = 'Large Dieffenbachia'; });
+  DB.plants.forEach(p => { if (LOC[p.location]) p.location = LOC[p.location]; if (p.name === 'דיפנבכיה גדולה') p.name = 'Large Dieffenbachia'; if (p.name === "Amazonian Elephant's Ear 'Polly'") p.name = "Amazonian Elephant's Ear 'Polly' (1)"; });
 }
 
 /* ---------- state / render ---------- */
@@ -365,21 +365,25 @@ function undo() {
 
 const readOpts = () => ({ pot: $('#f-pot').value, light: $('#f-light').value, mat: $('#f-mat').value, hot: $('#f-hot').checked });
 const MINE = [
-  ['Alocasia zabarina', 'alocasia', 'Kitchen'], ["Amazonian Elephant's Ear 'Polly'", 'alocasia', 'Kitchen'], ["Amazonian Elephant's Ear 'Polly' (2)", 'alocasia', 'Kitchen'],
-  ['Arrowhead', 'arrowhead', 'Kitchen'], ["Arrowhead 'Pink Allusion'", 'arrowhead', 'Kitchen'], ['Golden Pothos', 'pothos', 'Kitchen'],
-  ["Pothos 'N'joy'", 'pothos', 'Kitchen'], ['Satin Pothos', 'pothos', 'Kitchen'], ['Jade Plant', 'jade', 'Kitchen'],
-  ['Monstera', 'monstera', 'Kitchen'], ['Monstera adansonii ssp laniata', 'monstera', 'Kitchen'],
-  ['Avocado', 'avocado', 'Living Room'], ['Peace Lily', 'spathi', 'Living Room'], ['Porcelain Flower', 'hoya', 'Living Room'],
-  ['Rattlesnake Plant', 'calathea', 'Living Room'], ['Rubber Plant', 'ficus', 'Living Room'], ['Zz Plant', 'zz', 'Living Room'],
-  ["Candelabra spurge 'Cristata'", 'euphorbia', 'Balcony'], ['Elephant Bush bonsai', 'portulacaria', 'Balcony'],
-  ["Snake Plant 'Laurentii'", 'snake', 'Bedroom'], ['Kentia palm', 'kentia', 'Bathroom'], ['Large Dieffenbachia', 'dieffenbachia', 'Storage']
+  ['Alocasia zabarina', 'alocasia', 'Kitchen', 5], ["Amazonian Elephant's Ear 'Polly' (1)", 'alocasia', 'Kitchen', 9], ["Amazonian Elephant's Ear 'Polly' (2)", 'alocasia', 'Kitchen', 3],
+  ['Arrowhead', 'arrowhead', 'Kitchen', 9], ["Arrowhead 'Pink Allusion'", 'arrowhead', 'Kitchen', 5], ['Golden Pothos', 'pothos', 'Kitchen', 9],
+  ["Pothos 'N'joy'", 'pothos', 'Kitchen', 5], ['Satin Pothos', 'pothos', 'Kitchen', 3], ['Jade Plant', 'jade', 'Kitchen', 3],
+  ['Monstera', 'monstera', 'Kitchen', 9], ['Monstera adansonii ssp laniata', 'monstera', 'Kitchen', 15],
+  ['Avocado', 'avocado', 'Living Room', 5], ['Peace Lily', 'spathi', 'Living Room', 15], ['Porcelain Flower', 'hoya', 'Living Room', 9],
+  ['Rattlesnake Plant', 'calathea', 'Living Room', 15], ['Rubber Plant', 'ficus', 'Living Room', 15], ['Zz Plant', 'zz', 'Living Room', 25],
+  ["Candelabra spurge 'Cristata'", 'euphorbia', 'Balcony', 5], ['Elephant Bush bonsai', 'portulacaria', 'Balcony', 5],
+  ["Snake Plant 'Laurentii'", 'snake', 'Bedroom', 19], ['Kentia palm', 'kentia', 'Bathroom', 3], ['Large Dieffenbachia', 'dieffenbachia', 'Storage', 5]
 ];
 function seedMine() {
   const nowd = today(); let n = 0;
-  MINE.forEach(([name, species, location]) => {
-    if (DB.plants.some(p => p.name === name && p.location === location)) return;
-    const mk = () => ({ last: nowd, manual: null, snoozeUntil: null, snoozes: 0 });
-    const p = { id: uid(), name, species, location, photo: null, notes: '', created: nowd, opts: {}, tasks: { water: mk(), fertilize: mk() } };
+  MINE.forEach(([name, species, location, ago]) => {
+    const last = addDays(nowd, -ago), mk = d => ({ last: d, manual: null, snoozeUntil: null, snoozes: 0 });
+    const ex = DB.plants.find(p => p.name === name && p.location === location);
+    if (ex) { // already added: just correct the watering date, unless there is real care history
+      if (ex.tasks.water && !DB.log.some(e => e.type === 'done' && e.pid === ex.id)) ex.tasks.water.last = last;
+      return;
+    }
+    const p = { id: uid(), name, species, location, photo: null, notes: '', created: nowd, opts: {}, tasks: { water: mk(last), fertilize: mk(nowd) } };
     DB.plants.push(p); addLog({ type: 'add', pid: p.id, plant: name, species, date: nowd, seed: true }); n++;
   });
   save(); return n;
@@ -486,7 +490,7 @@ document.addEventListener('click', e => {
         tasks: Object.fromEntries(Object.entries(p.tasks).map(([k, t]) => [k, { manual: t.manual, recommended: recInterval(p, k) }])) })), log: DB.log });
   }
   else if (a === 'seed') {
-    if (confirm(`Add ${MINE.length} plants with their locations? This assumes you watered them all today; you can correct each one (tap the frequency → Last done).`)) { seedMine(); go({ name: 'plants' }); }
+    if (confirm(`Add ${MINE.length} plants with their locations? Last-watered dates come from your other app; plants already added get their date corrected (unless you logged care in this app). You can edit any date via the frequency button → Last done.`)) { seedMine(); go({ name: 'plants' }); }
   }
   else if (a === 'exportall') shareJSON(`plants-backup-${today()}.json`, DB);
   else if (a === 'importall') $('#importfile').click();
