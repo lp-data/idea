@@ -165,7 +165,7 @@ const TASKS = {
   prune:     { l: 'Pruning',      i: '✂️', d: 'Pruned',  rec: S(90, 90, 90, 90) },
   repot:     { l: 'Repotting',    i: '🪴', d: 'Repotted', rec: S(365, 365, 365, 365) }
 };
-const REASONS = ['Soil still moist', 'Was away', 'Other'];
+const REASONS = ['Soil still moist', 'I was away', 'Other'];
 const LOCATIONS = ['Living Room', 'Kitchen', 'Bedroom', 'Balcony', 'Office', 'Bathroom', 'Storage'];
 
 // watering adjustments by pot / light / material / warm spot. Starting values, to be calibrated from the log.
@@ -224,14 +224,14 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-10-27.h';
-const BUILD = '27/10/2026 23:33'; // update on every deploy
+const VERSION = '2026-10-27.i';
+const BUILD = '27/10/2026 23:35'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(DB)); }
-  catch (e) { alert('Could not save. Storage may be full; try exporting a backup and using smaller photos.'); }
+  catch (e) { alert('Couldn\'t save. Your phone\'s storage may be full. Export a backup, then try smaller photos.'); }
 }
 function addLog(o) { DB.log.push({ t: new Date().toISOString(), season: season(), ...o }); }
 const plant = id => DB.plants.find(p => p.id === id);
@@ -267,16 +267,16 @@ function vToday() {
     ${snz ? `<button class="snz" data-act="snooze" data-p="${x.p.id}" data-k="${x.k}" aria-label="Snooze">⏰</button>` : ''}
     <button class="ok" data-act="done" data-p="${x.p.id}" data-k="${x.k}" aria-label="Done">✓</button></div>`;
   let h = `<h1>Today</h1><div class="sub" style="margin:-10px 0 8px">${SEASONS[season()]} · ${shortDate(today())}</div>`;
-  if (!DB.plants.length) return h + `<div class="empty"><div class="big">🪴</div><p>No plants yet.<br>Add your first one?</p><button class="secondary" data-act="new">Add plant</button><br><br><button class="secondary" data-act="seed">Add my plants (${MINE.length})</button></div>`;
+  if (!DB.plants.length) return h + `<div class="empty"><div class="big">🪴</div><p><b>No plants yet</b><br>Add your first plant to start tracking its watering and care.</p><button class="secondary" data-act="new">Add a plant</button><br><br><button class="secondary" data-act="seed">Import my plants (${MINE.length})</button></div>`;
   const byTask = {}; now.forEach(x => byTask[x.k] = (byTask[x.k] || 0) + 1);
-  const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'None';
-  h += `<div class="tiles"><div class="tile ok-t"><span>✔</span><div><small>Today's tasks</small><b>${todayTxt}</b></div></div>
+  const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'Nothing';
+  h += `<div class="tiles"><div class="tile ok-t"><span>✔</span><div><small>Due today</small><b>${todayTxt}</b></div></div>
     <button class="tile late-t" data-act="tab2" data-v="today"><span>⏰</span><div><b>${late.length}</b><small>Overdue</small></div></button></div>`;
   h += `<div class="seg"><button class="${todayTab === 'today' ? 'on' : ''}" data-act="tab2" data-v="today">Today</button><button class="${todayTab === 'upcoming' ? 'on' : ''}" data-act="tab2" data-v="upcoming">Upcoming</button></div>`;
   if (todayTab === 'today') {
     const due = [...late, ...now];
-    h += due.length ? due.map(x => row(x)).join('') : `<div class="empty"><div class="big">🎉</div><p>All done for today</p></div>`;
-  } else if (!soon.length) h += `<div class="empty"><div class="big">🌤️</div><p>No tasks in the next 30 days</p></div>`;
+    h += due.length ? due.map(x => row(x)).join('') : `<div class="empty"><div class="big">🎉</div><p><b>All caught up</b><br>Nothing needs care today.</p></div>`;
+  } else if (!soon.length) h += `<div class="empty"><div class="big">🌤️</div><p><b>Nothing coming up</b><br>No care is due in the next 30 days.</p></div>`;
   else {
     const groups = {}; soon.forEach(x => (groups[x.i.due] = groups[x.i.due] || []).push(x));
     h += Object.keys(groups).sort().map(d => { const g = groups[d], w = when(d);
@@ -291,12 +291,12 @@ function vPlants() {
   const list = DB.plants.filter(p => !locFilter || p.location === locFilter);
   let h = `<h1>Plants</h1>`;
   if (locs.length > 1) h += `<div class="chips"><button class="chip ${locFilter ? '' : 'on'}" data-act="loc" data-v="">All</button>${locs.map(l => `<button class="chip ${locFilter === l ? 'on' : ''}" data-act="loc" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div>`;
-  if (!list.length) h += `<div class="empty"><div class="big">🪴</div><p>No plants yet</p></div>`;
+  if (!list.length) h += `<div class="empty"><div class="big">🪴</div><p><b>No plants yet</b><br>Tap + to add your first plant.</p></div>`;
   h += `<div class="grid">` + list.map(p => {
     const dues = Object.keys(p.tasks).map(k => info(p, k).due).filter(Boolean).sort();
     const w = dues[0] ? when(dues[0]) : null;
     return `<button class="pcard" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b><bdi>${esc(p.name)}</bdi></b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
-  }).join('') + `</div><button class="fab" data-act="new" aria-label="Add plant">+</button>`;
+  }).join('') + `</div><button class="fab" data-act="new" aria-label="Add a plant">+</button>`;
   return h;
 }
 
@@ -321,7 +321,7 @@ function vPlant() {
     const i = info(p, k), T = TASKS[k], w = i.due ? when(i.due) : null;
     h += `<div class="card" style="margin-top:12px"><div class="task-head"><span style="font-size:22px">${T.i}</span><b>${T.l}</b>
       <button class="secondary" data-act="freq" data-p="${p.id}" data-k="${k}">${i.interval ? 'Every ' + days(i.interval) : 'Paused'} ✎</button></div>
-      <div class="sub" style="margin-top:6px">${i.interval ? (i.manual ? 'Manual frequency' : `Recommended for ${SEASONS[season()].toLowerCase()}`) : (k === 'fertilize' && season() === 'winter' ? 'No fertilizing in winter (resumes in spring)' : `No recommendation for ${SEASONS[season()].toLowerCase()}`)}
+      <div class="sub" style="margin-top:6px">${i.interval ? (i.manual ? 'Custom schedule' : `Recommended for ${SEASONS[season()].toLowerCase()}`) : (k === 'fertilize' && season() === 'winter' ? 'No fertilizing in winter (resumes in spring)' : `No recommendation for ${SEASONS[season()].toLowerCase()}`)}
         · Last done ${shortDate(p.tasks[k].last)}</div>
       ${k === 'water' && !i.manual && factors(p).length ? `<div class="sub" style="margin-top:2px">Base ${baseRec(p, k)} days${factors(p).map(([l, m]) => ` · ${l} ×${m}`).join('')} → ${i.rec}</div>` : ''}
       ${w ? `<div class="sub ${w.late ? 'late' : ''}" style="margin-top:2px">Next: ${w.txt} (${shortDate(i.due)})</div>` : ''}
@@ -331,7 +331,7 @@ function vPlant() {
   if (missing.length) h += `<h2>Add a task</h2><div class="chips">${missing.map(k => `<button class="chip" data-act="addtask" data-p="${p.id}" data-k="${k}">${TASKS[k].i} ${TASKS[k].l}</button>`).join('')}</div>`;
   h += `<h2>Notes</h2><textarea class="note" id="notes" data-p="${p.id}" placeholder="e.g. likes bright light, yellowing leaves...">${esc(p.notes || '')}</textarea>`;
   const hist = DB.log.filter(e => e.pid === p.id && histText(e)).slice(-15).reverse();
-  h += `<h2>History</h2><div class="card">${hist.length ? hist.map(e => `<div class="hist"><span>${histText(e)}</span><span>${shortDate(e.date || e.t.slice(0, 10))}</span></div>`).join('') : '<div class="sub">No history yet</div>'}</div>`;
+  h += `<h2>History</h2><div class="card">${hist.length ? hist.map(e => `<div class="hist"><span>${histText(e)}</span><span>${shortDate(e.date || e.t.slice(0, 10))}</span></div>`).join('') : '<div class="sub">No care logged yet</div>'}</div>`;
   return h;
 }
 
@@ -360,15 +360,15 @@ function vForm() {
 
 function vSettings() {
   return `<h1>Settings</h1>
-  <div class="card"><b>Behavior tracking</b><p class="sub">The app keeps a log of every task and snooze (${DB.log.length} events). After a few weeks, export it and share it for analysis and suggestions to improve the scheduling.</p>
+  <div class="card"><b>Care log</b><p class="sub">The app records every watering and snooze (${DB.log.length} so far) so the schedule can be improved. After a few weeks, export it and share it for suggestions.</p>
     <button class="secondary" data-act="exportlog" style="width:100%">Export log</button></div>
-  <div class="card"><b>My plants</b><p class="sub">Add all ${MINE.length} of your plants with their locations in one go. Existing plants won't be duplicated.</p>
-    <button class="secondary" data-act="seed" style="width:100%">Add my plants</button></div>
+  <div class="card"><b>My plants</b><p class="sub">Adds your ${MINE.length} plants with their rooms and last-watered dates. Plants already in the app are updated, not duplicated.</p>
+    <button class="secondary" data-act="seed" style="width:100%">Import my plants</button></div>
   ${(rooms => rooms.length ? `<div class="card"><b>Rooms</b><p class="sub">Leave everything on "Normal" unless a room is clearly different (a hot sunny room, a humid bathroom, near a heater). It slightly adjusts watering.</p>${rooms.map(r => `<div class="room"><b><bdi>${esc(r)}</bdi></b><select class="room-sel" data-room="${esc(r)}">${Object.entries(CLIM).map(([k, v]) => `<option value="${k}" ${((DB.rooms || {})[r] || {}).c === k || (!((DB.rooms || {})[r] || {}).c && k === 'n') ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div>`).join('')}</div>` : '')([...new Set(DB.plants.map(p => p.location).filter(Boolean))])}
-  <div class="card"><b>Backup</b><p class="sub">All data is stored on this phone only. Back it up from time to time.</p>
+  <div class="card"><b>Backup</b><p class="sub">Your plants and history live only on this phone. Export a backup now and then so you can restore them if you switch phones or clear your browser.</p>
     <div class="btnrow"><button class="secondary" data-act="exportall">Export backup</button><button class="secondary" data-act="importall">Restore from backup</button></div></div>
-  <div class="card"><b>Current season: ${SEASONS[season()]}</b><p class="sub">Recommended watering frequencies change automatically with the season. You can always set a manual frequency for a plant.</p></div>
-  <div class="card"><b>App version</b><p class="sub">${VERSION}. If something looks out of date, reload the latest version (your plants and history are kept).</p>
+  <div class="card"><b>Season: ${SEASONS[season()]}</b><p class="sub">Recommended schedules follow the season automatically. You can set your own schedule for any plant.</p></div>
+  <div class="card"><b>App version</b><p class="sub">${VERSION}. If something looks out of date, reload the latest version. Your plants and history are kept.</p>
     <button class="secondary" data-act="reload" style="width:100%">Reload latest version</button></div>
   <div class="card"><b>Install on your phone</b><p class="sub">iPhone: Share → "Add to Home Screen". Android: browser menu → "Install app".</p></div>`;
 }
@@ -396,7 +396,7 @@ function doSnooze(n) {
   t.snoozeUntil = addDays(today(), n); t.snoozes = (t.snoozes || 0) + 1;
   addLog({ type: 'snooze', pid, plant: p.name, species: p.species, task: k, date: today(), planned: i.base, days: n, until: t.snoozeUntil,
     lateSoFar: diff(i.base, t.snoozeUntil), snoozeNo: t.snoozes, interval: i.interval, reason: reason || null });
-  save(); closeSheet(); render(); toast(`Snoozed to ${shortDate(t.snoozeUntil)}`, true);
+  save(); closeSheet(); render(); toast(`Snoozed until ${shortDate(t.snoozeUntil)}`, true);
 }
 function undo() {
   if (!lastUndo) return;
@@ -465,10 +465,10 @@ document.addEventListener('click', e => {
   else if (a === 'done') doDone(d.p, d.k);
   else if (a === 'snooze') {
     const p = plant(d.p); sheetCtx = { pid: d.p, k: d.k, reason: null };
-    openSheet(`<h3>Snooze ${TASKS[d.k].l.toLowerCase()}?</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · Pick a reason (optional), then how long</div>
+    openSheet(`<h3>Snooze ${TASKS[d.k].l.toLowerCase()}?</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · Why? (optional) Then choose for how long.</div>
       <div class="chips">${REASONS.map(r => `<button class="chip" data-act="reason" data-v="${r}">${r}</button>`).join('')}</div>
       <div class="btnrow"><button class="secondary" data-act="snoozego" data-n="1">1 day</button><button class="secondary" data-act="snoozego" data-n="2">2 days</button></div>
-      <div class="btnrow"><input type="number" id="custom-n" min="1" max="90" inputmode="numeric" placeholder="Days"><button class="secondary" data-act="snoozego" data-n="custom">Snooze</button></div>`);
+      <div class="btnrow"><input type="number" id="custom-n" min="1" max="90" inputmode="numeric" placeholder="Other (days)"><button class="secondary" data-act="snoozego" data-n="custom">Snooze</button></div>`);
   }
   else if (a === 'reason') { sheetCtx.reason = sheetCtx.reason === d.v ? null : d.v; document.querySelectorAll('.panel .chip').forEach(c => c.classList.toggle('on', c.dataset.v === sheetCtx.reason)); }
   else if (a === 'snoozego') { const n = d.n === 'custom' ? parseInt($('#custom-n').value, 10) : +d.n; if (n >= 1 && n <= 90) doSnooze(n); }
@@ -477,11 +477,11 @@ document.addEventListener('click', e => {
   else if (a === 'freq') {
     const p = plant(d.p), i = info(p, d.k); sheetCtx = { pid: d.p, k: d.k };
     openSheet(`<h3>${TASKS[d.k].l} frequency</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · Recommended for ${SEASONS[season()].toLowerCase()}: ${i.rec ? 'every ' + days(i.rec) : 'paused'}</div>
-      <label>Every how many days<input type="number" id="freq-n" min="1" max="730" inputmode="numeric" value="${i.interval || ''}"></label>
+      <label>Repeat every (days)<input type="number" id="freq-n" min="1" max="730" inputmode="numeric" value="${i.interval || ''}"></label>
       <label>Last done<input type="date" id="last-d" value="${p.tasks[d.k].last}" max="${today()}"></label>
       <button class="primary" style="margin-top:6px" data-act="freqsave">Save</button>
-      ${i.manual ? `<button class="secondary" style="width:100%;margin-top:8px" data-act="freqreset">Back to recommended</button>` : ''}
-      ${d.k !== 'water' ? `<button class="secondary danger" style="width:100%;margin-top:8px" data-act="rmtask">Remove task</button>` : ''}`);
+      ${i.manual ? `<button class="secondary" style="width:100%;margin-top:8px" data-act="freqreset">Use recommended</button>` : ''}
+      ${d.k !== 'water' ? `<button class="secondary danger" style="width:100%;margin-top:8px" data-act="rmtask">Remove this task</button>` : ''}`);
   }
   else if (a === 'freqsave' || a === 'freqreset') {
     const { pid, k } = sheetCtx, p = plant(pid), t = p.tasks[k], from = info(p, k).interval;
@@ -522,7 +522,7 @@ document.addEventListener('click', e => {
   }
   else if (a === 'delplant') {
     const p = plant(d.p);
-    if (confirm(`Delete ${p.name}? This can't be undone.`)) {
+    if (confirm(`Delete ${p.name} and its history? This can't be undone.`)) {
       DB.plants = DB.plants.filter(x => x.id !== p.id); addLog({ type: 'delete', pid: p.id, plant: p.name, date: today() }); save(); go({ name: 'plants' });
     }
   }
@@ -532,7 +532,7 @@ document.addEventListener('click', e => {
         tasks: Object.fromEntries(Object.entries(p.tasks).map(([k, t]) => [k, { manual: t.manual, recommended: recInterval(p, k) }])) })), log: DB.log });
   }
   else if (a === 'seed') {
-    if (confirm(`Add ${MINE.length} plants with their locations? Last-watered dates come from your other app; plants already added get their date corrected (unless you logged care in this app). You can edit any date via the frequency button → Last done.`)) { seedMine(); go({ name: 'plants' }); }
+    if (confirm(`Import ${MINE.length} plants with their rooms and last-watered dates? Plants already in the app get their room and date updated, unless you've logged care for them here.`)) { seedMine(); go({ name: 'plants' }); }
   }
   else if (a === 'reload') {
     (async () => {
@@ -563,8 +563,8 @@ document.addEventListener('change', async e => {
     try {
       const data = JSON.parse(await el.files[0].text());
       if (!Array.isArray(data.plants) || !Array.isArray(data.log)) throw 0;
-      if (confirm('Restore from backup? Current data will be replaced.')) { DB = data; save(); go({ name: 'today' }); }
-    } catch (x) { alert('This file does not look like a backup of this app.'); }
+      if (confirm('Replace your current data with this backup?')) { DB = data; save(); go({ name: 'today' }); }
+    } catch (x) { alert('That file isn\'t a backup from this app.'); }
     el.value = '';
   }
 });
