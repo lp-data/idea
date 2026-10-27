@@ -88,7 +88,7 @@ nav button.on{color:var(--green)}
 #toast button{color:#8fe3b0;font-weight:700}
 .note{width:100%;min-height:80px}
 .build{text-align:center;font-size:12px;color:var(--muted);margin:28px 0 4px}
-.room{display:flex;align-items:center;gap:8px;margin-top:8px}.room b{flex:1}.room input{width:76px;padding:8px}
+.room{display:flex;align-items:center;gap:8px;margin-top:8px}.room b{flex:1}.room select{width:190px;padding:8px}
 .tiles{display:flex;gap:8px;margin:8px 0 12px}
 .tile{flex:1;display:flex;align-items:center;gap:10px;border-radius:16px;padding:12px;text-align:start}
 .tile>span{font-size:22px}.tile small{display:block;font-size:12px;opacity:.8}.tile b{font-size:16px}
@@ -183,15 +183,17 @@ const optsOf = p => { const o = { pot: 'm', light: 'm', mat: 'p', soil: 's', dra
 const svp = t => 0.6108 * Math.exp(17.27 * t / (t + 237.3));
 const vpd = (t, rh) => svp(t) * (1 - rh / 100);
 const SEASON_T = { spring: 23, summer: 26, autumn: 23, winter: 20 };
+const CLIM = { c: ['Cooler than usual', -3, 50], n: ['Normal', 0, 50], w: ['Warmer than usual', 3, 50], h: ['Hot and dry', 5, 35], u: ['Humid', 0, 70] };
 function climate(p) {
-  const r = (DB.rooms || {})[p.location] || {}, t = r.t ?? SEASON_T[season()], rh = r.rh ?? 50;
-  return { t, rh, mult: Math.min(2, Math.max(.5, vpd(SEASON_T[season()], 50) / vpd(t, Math.min(rh, 90)))) };
+  const r = (DB.rooms || {})[p.location] || {}, base = SEASON_T[season()];
+  const [label, dt, rh] = CLIM[r.c] || (r.t != null || r.rh != null ? ['Custom', (r.t ?? base) - base, r.rh ?? 50] : CLIM.n);
+  return { label, mult: Math.min(2, Math.max(.5, vpd(base, 50) / vpd(base + dt, Math.min(rh, 90)))) };
 }
 // every factor that changes the watering interval, as [label, multiplier]
 function factors(p) {
   const o = optsOf(p), c = climate(p);
   return [[`${nm(POT, o.pot)} pot`, potMult(POT[o.pot][1])], [LIGHT[o.light][0], LIGHT[o.light][1]], [`${nm(MAT, o.mat)} pot`, MAT[o.mat][1]],
-    [nm(SOIL, o.soil), SOIL[o.soil][1]], ['No drainage holes', o.drain ? 1 : NODRAIN], [`${p.location || 'Room'} ${c.t}°C / ${c.rh}%`, c.mult]]
+    [nm(SOIL, o.soil), SOIL[o.soil][1]], ['No drainage holes', o.drain ? 1 : NODRAIN], [`${p.location || 'Room'}: ${c.label.toLowerCase()}`, c.mult]]
     .map(f => [f[0], +f[1].toFixed(2)]).filter(f => f[1] !== 1);
 }
 const waterMult = p => Math.min(2.5, Math.max(.4, factors(p).reduce((m, f) => m * f[1], 1)));
@@ -222,8 +224,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-10-27.g';
-const BUILD = '27/10/2026 23:30'; // update on every deploy
+const VERSION = '2026-10-27.h';
+const BUILD = '27/10/2026 23:33'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -362,7 +364,7 @@ function vSettings() {
     <button class="secondary" data-act="exportlog" style="width:100%">Export log</button></div>
   <div class="card"><b>My plants</b><p class="sub">Add all ${MINE.length} of your plants with their locations in one go. Existing plants won't be duplicated.</p>
     <button class="secondary" data-act="seed" style="width:100%">Add my plants</button></div>
-  ${(rooms => rooms.length ? `<div class="card"><b>Rooms</b><p class="sub">Typical temperature and humidity per room. They adjust watering. Leave blank for the seasonal default (${SEASON_T[season()]}°C, 50%).</p>${rooms.map(r => { const v = (DB.rooms || {})[r] || {}; return `<div class="room"><b><bdi>${esc(r)}</bdi></b><input class="room-in" type="number" inputmode="decimal" data-room="${esc(r)}" data-f="t" placeholder="°C" value="${v.t ?? ''}"><input class="room-in" type="number" inputmode="decimal" data-room="${esc(r)}" data-f="rh" placeholder="%" value="${v.rh ?? ''}"></div>`; }).join('')}</div>` : '')([...new Set(DB.plants.map(p => p.location).filter(Boolean))])}
+  ${(rooms => rooms.length ? `<div class="card"><b>Rooms</b><p class="sub">Leave everything on "Normal" unless a room is clearly different (a hot sunny room, a humid bathroom, near a heater). It slightly adjusts watering.</p>${rooms.map(r => `<div class="room"><b><bdi>${esc(r)}</bdi></b><select class="room-sel" data-room="${esc(r)}">${Object.entries(CLIM).map(([k, v]) => `<option value="${k}" ${((DB.rooms || {})[r] || {}).c === k || (!((DB.rooms || {})[r] || {}).c && k === 'n') ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div>`).join('')}</div>` : '')([...new Set(DB.plants.map(p => p.location).filter(Boolean))])}
   <div class="card"><b>Backup</b><p class="sub">All data is stored on this phone only. Back it up from time to time.</p>
     <div class="btnrow"><button class="secondary" data-act="exportall">Export backup</button><button class="secondary" data-act="importall">Restore from backup</button></div></div>
   <div class="card"><b>Current season: ${SEASONS[season()]}</b><p class="sub">Recommended watering frequencies change automatically with the season. You can always set a manual frequency for a plant.</p></div>
@@ -548,12 +550,10 @@ document.addEventListener('click', e => {
 
 document.addEventListener('change', async e => {
   const el = e.target;
-  if (el.classList.contains('room-in')) {
-    const r = el.dataset.room, f = el.dataset.f; let v = el.value === '' ? null : parseFloat(el.value);
-    if (Number.isNaN(v)) v = null;
-    if (v !== null) v = f === 't' ? Math.min(45, Math.max(0, v)) : Math.min(90, Math.max(10, v));
-    DB.rooms = DB.rooms || {}; const o = DB.rooms[r] = DB.rooms[r] || {}, from = o[f] ?? null; o[f] = v;
-    addLog({ type: 'room', location: r, field: f, from, to: v, date: today() }); save(); render();
+  if (el.classList.contains('room-sel')) {
+    const r = el.dataset.room; DB.rooms = DB.rooms || {};
+    const o = DB.rooms[r] = DB.rooms[r] || {}, from = o.c || 'n'; o.c = el.value; delete o.t; delete o.rh;
+    addLog({ type: 'room', location: r, from, to: el.value, date: today() }); save(); render();
   } else if (el.id === 'photo' && el.files[0]) {
     formPhoto = await resizePhoto(el.files[0]);
     $('#photolbl').innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : '📷 Add photo';
