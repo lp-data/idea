@@ -1,16 +1,16 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>הצמחים שלי</title>
+<title>My Plants</title>
 <meta name="theme-color" content="#2f8f5b">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="הצמחים שלי">
+<meta name="apple-mobile-web-app-title" content="My Plants">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <style>
 :root{
@@ -61,7 +61,7 @@ label>input,label>select,label>textarea{margin-top:4px;font-size:16px}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .chip{padding:6px 12px;border-radius:99px;background:var(--card);border:1px solid var(--border);font-size:14px}
 .chip.on{background:var(--green);border-color:var(--green);color:#fff}
-.fab{position:fixed;inset-inline-start:max(16px,calc(50% - 244px));bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--green);color:#fff;font-size:30px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.fab{position:fixed;inset-inline-end:max(16px,calc(50% - 244px));bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--green);color:#fff;font-size:30px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
 nav{position:fixed;bottom:0;inset-inline:0;background:var(--card);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav button{flex:1;padding:10px 0 8px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
 nav button span{font-size:22px}
@@ -87,14 +87,23 @@ nav button.on{color:var(--green)}
 #toast[hidden]{display:none}
 #toast button{color:#8fe3b0;font-weight:700}
 .note{width:100%;min-height:80px}
+.tiles{display:flex;gap:8px;margin:8px 0 12px}
+.tile{flex:1;display:flex;align-items:center;gap:10px;border-radius:16px;padding:12px;text-align:start}
+.tile>span{font-size:22px}.tile small{display:block;font-size:12px;opacity:.8}.tile b{font-size:16px}
+.ok-t{background:var(--green-soft);color:var(--green-d)}
+.late-t{background:var(--late-soft);color:var(--late);flex:none;min-width:110px}
+.seg{display:flex;gap:4px;background:var(--green-soft);border-radius:99px;padding:4px;width:fit-content;margin:0 auto 14px}
+.seg button{padding:8px 22px;border-radius:99px;color:var(--green-d);font-weight:600}
+.seg button.on{background:var(--green);color:#fff}
+.card .row{box-shadow:none;background:var(--bg);margin-bottom:6px}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <nav id="nav">
-  <button data-act="tab" data-v="today"><span>📅</span>היום</button>
-  <button data-act="tab" data-v="plants"><span>🪴</span>הצמחים שלי</button>
-  <button data-act="tab" data-v="settings"><span>⚙️</span>הגדרות</button>
+  <button data-act="tab" data-v="today"><span>📅</span>Today</button>
+  <button data-act="tab" data-v="plants"><span>🪴</span>Plants</button>
+  <button data-act="tab" data-v="settings"><span>⚙️</span>Settings</button>
 </nav>
 <div id="sheet" hidden></div>
 <div id="toast" hidden></div>
@@ -113,61 +122,60 @@ const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return fmt(d); };
 const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
 const shortDate = s => { const [, m, d] = s.split('-'); return `${+d}/${+m}`; };
-const inDays = n => n === 1 ? 'ביום' : n === 2 ? 'ביומיים' : `ב-${n} ימים`;
-const days = n => n === 1 ? 'יום' : n === 2 ? 'יומיים' : `${n} ימים`;
+const days = n => n === 1 ? '1 day' : `${n} days`;
 
 /* ---------- domain ---------- */
 const S = (a, b, c, d) => ({ spring: a, summer: b, autumn: c, winter: d });
-const SEASONS = { spring: 'אביב', summer: 'קיץ', autumn: 'סתיו', winter: 'חורף' };
+const SEASONS = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
 const season = () => { const m = new Date().getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 8 ? 'summer' : m >= 9 && m <= 10 ? 'autumn' : 'winter'; };
 
-// ימים בין השקיות, לפי עונה (ברירות מחדל כלליות להתחלה)
+// days between waterings, per season (general starting defaults)
 const SPECIES = {
-  pothos:        { n: 'פוטוס (Pothos)',               e: '🌿', water: S(6, 6, 8, 9) },
-  monstera:      { n: 'מונסטרה (Monstera)',           e: '🌱', water: S(8, 8, 12, 17) },
-  ficus:         { n: 'עץ גומי / פיקוס',              e: '🌳', water: S(7, 7, 10, 12) },
-  snake:         { n: 'סנסוויריה (Snake Plant)',      e: '🗡️', water: S(18, 17, 25, 40) },
-  spathi:        { n: 'שלום עולם (Peace Lily)',       e: '🤍', water: S(6, 5, 7, 9) },
-  alocasia:      { n: 'אלוקסיה (Alocasia)',           e: '🍃', water: S(7, 7, 10, 14) },
-  arrowhead:     { n: 'סינגוניום (Arrowhead)',        e: '🌿', water: S(7, 7, 10, 12) },
-  calathea:      { n: 'קלתאה (Calathea)',             e: '🍂', water: S(6, 5, 8, 12) },
-  kentia:        { n: 'דקל קנציה (Kentia)',           e: '🌴', water: S(8, 7, 10, 14) },
-  hoya:          { n: 'הויה (Hoya)',                  e: '🪻', water: S(8, 7, 10, 14) },
-  dieffenbachia: { n: 'דיפנבכיה',                     e: '🌿', water: S(8, 7, 10, 12) },
-  avocado:       { n: 'אבוקדו',                       e: '🥑', water: S(8, 7, 10, 12) },
-  jade:          { n: 'עץ הכסף (Jade)',               e: '🪙', water: S(18, 16, 21, 30) },
-  portulacaria:  { n: 'פורטולקריה (Elephant Bush)',   e: '🌳', water: S(16, 16, 21, 30) },
-  zz:            { n: 'זמיוקולקס (ZZ)',               e: '🌿', water: S(18, 16, 24, 32) },
-  euphorbia:     { n: 'אופורביה (Candelabra)',        e: '🌵', water: S(21, 18, 28, 35) },
-  orchid:        { n: 'סחלב',                         e: '🌸', water: S(7, 6, 8, 10) },
-  fern:          { n: 'שרך',                          e: '🍃', water: S(4, 3, 4, 6) },
-  succulent:     { n: 'סוקולנט',                      e: '🪷', water: S(14, 10, 14, 21) },
-  cactus:        { n: 'קקטוס',                        e: '🌵', water: S(21, 14, 21, 35) },
-  herb:          { n: 'עשבי תיבול',                   e: '🌿', water: S(3, 2, 3, 5) },
-  other:         { n: 'אחר',                          e: '🪴', water: S(7, 5, 7, 10) }
+  pothos:        { n: 'Pothos',               e: '🌿', water: S(6, 6, 8, 9) },
+  monstera:      { n: 'Monstera',           e: '🌱', water: S(8, 8, 12, 17) },
+  ficus:         { n: 'Rubber plant / Ficus',              e: '🌳', water: S(7, 7, 10, 12) },
+  snake:         { n: 'Snake Plant',      e: '🗡️', water: S(18, 17, 25, 40) },
+  spathi:        { n: 'Peace Lily',       e: '🤍', water: S(6, 5, 7, 9) },
+  alocasia:      { n: 'Alocasia',           e: '🍃', water: S(7, 7, 10, 14) },
+  arrowhead:     { n: 'Arrowhead (Syngonium)',        e: '🌿', water: S(7, 7, 10, 12) },
+  calathea:      { n: 'Calathea',             e: '🍂', water: S(6, 5, 8, 12) },
+  kentia:        { n: 'Kentia palm',           e: '🌴', water: S(8, 7, 10, 14) },
+  hoya:          { n: 'Hoya',                  e: '🪻', water: S(8, 7, 10, 14) },
+  dieffenbachia: { n: 'Dieffenbachia',                     e: '🌿', water: S(8, 7, 10, 12) },
+  avocado:       { n: 'Avocado',                       e: '🥑', water: S(8, 7, 10, 12) },
+  jade:          { n: 'Jade Plant',               e: '🪙', water: S(18, 16, 21, 30) },
+  portulacaria:  { n: 'Elephant Bush',   e: '🌳', water: S(16, 16, 21, 30) },
+  zz:            { n: 'ZZ Plant',               e: '🌿', water: S(18, 16, 24, 32) },
+  euphorbia:     { n: 'Candelabra spurge',        e: '🌵', water: S(21, 18, 28, 35) },
+  orchid:        { n: 'Orchid',                         e: '🌸', water: S(7, 6, 8, 10) },
+  fern:          { n: 'Fern',                          e: '🍃', water: S(4, 3, 4, 6) },
+  succulent:     { n: 'Succulent',                      e: '🪷', water: S(14, 10, 14, 21) },
+  cactus:        { n: 'Cactus',                        e: '🌵', water: S(21, 14, 21, 35) },
+  herb:          { n: 'Herbs',                   e: '🌿', water: S(3, 2, 3, 5) },
+  other:         { n: 'Other',                          e: '🪴', water: S(7, 5, 7, 10) }
 };
-// rec: 0 = מושהה בעונה הזאת
+// rec: 0 = paused this season
 const TASKS = {
-  water:     { l: 'השקיה',        i: '💧', d: 'הושקה' },
-  fertilize: { l: 'דישון',        i: '🌱', d: 'דושן',  rec: S(30, 21, 60, 0) },
-  mist:      { l: 'ריסוס',        i: '🌫️', d: 'רוסס',  rec: S(4, 3, 4, 5) },
-  prune:     { l: 'גיזום',        i: '✂️', d: 'גוזם',  rec: S(90, 90, 90, 90) },
-  repot:     { l: 'החלפת עציץ',   i: '🪴', d: 'הוחלף', rec: S(365, 365, 365, 365) }
+  water:     { l: 'Watering',     i: '💧', d: 'Watered' },
+  fertilize: { l: 'Fertilizing',  i: '🌱', d: 'Fertilized',  rec: S(30, 21, 60, 0) },
+  mist:      { l: 'Misting',      i: '🌫️', d: 'Misted',  rec: S(4, 3, 4, 5) },
+  prune:     { l: 'Pruning',      i: '✂️', d: 'Pruned',  rec: S(90, 90, 90, 90) },
+  repot:     { l: 'Repotting',    i: '🪴', d: 'Repotted', rec: S(365, 365, 365, 365) }
 };
-const REASONS = ['האדמה עדיין לחה', 'לא הייתי בבית', 'אחר'];
-const LOCATIONS = ['סלון', 'מטבח', 'חדר שינה', 'מרפסת', 'חדר עבודה', 'אמבטיה', 'מחסן'];
+const REASONS = ['Soil still moist', 'Was away', 'Other'];
+const LOCATIONS = ['Living Room', 'Kitchen', 'Bedroom', 'Balcony', 'Office', 'Bathroom', 'Storage'];
 
-// התאמות להשקיה לפי עציץ / אור / חומר / מקום חם. ערכים התחלתיים, יכוילו לפי היומן.
-const POT = { s: ['קטן', .8], m: ['בינוני', 1], l: ['גדול', 1.25] };
-const LIGHT = { b: ['חזק', .85], m: ['בינוני', 1], d: ['חלש', 1.35] };
-const MAT = { p: ['פלסטיק / קרמיקה', 1], t: ['טרקוטה', .75] };
+// watering adjustments by pot / light / material / warm spot. Starting values, to be calibrated from the log.
+const POT = { s: ['Small', .8], m: ['Medium', 1], l: ['Large', 1.25] };
+const LIGHT = { b: ['Bright', .85], m: ['Medium', 1], d: ['Low', 1.35] };
+const MAT = { p: ['Plastic / ceramic', 1], t: ['Terracotta', .75] };
 const HOT = .85;
 const optsOf = p => ({ pot: 'm', light: 'm', mat: 'p', hot: false, ...(p.opts || {}) });
 const waterMult = p => { const o = optsOf(p); return Math.min(1.6, Math.max(.6, POT[o.pot][1] * LIGHT[o.light][1] * MAT[o.mat][1] * (o.hot ? HOT : 1))); };
 const baseRec = (p, k) => k === 'water' ? (SPECIES[p.species] || SPECIES.other).water[season()] : TASKS[k].rec[season()];
 const recInterval = (p, k) => { const b = baseRec(p, k); return k === 'water' ? Math.max(1, Math.round(b * waterMult(p))) : b; };
 
-// התדירות בפועל: ידנית אם הוגדרה, אחרת המומלצת לעונה. דחייה משנה רק את המועד הנוכחי.
+// effective interval: manual if set, otherwise the seasonal recommendation. Snoozing only moves the current due date.
 function info(p, k) {
   const t = p.tasks[k], rec = recInterval(p, k), interval = t.manual || rec;
   if (!interval) return { interval: 0, rec, base: null, due: null, manual: !!t.manual };
@@ -177,10 +185,10 @@ function info(p, k) {
 }
 function when(due) {
   const d = diff(today(), due);
-  if (d < 0) return { txt: `באיחור של ${days(-d)}`, late: true, d };
-  if (d === 0) return { txt: 'היום', late: false, d };
-  if (d === 1) return { txt: 'מחר', late: false, d };
-  return { txt: `בעוד ${days(d)}`, late: false, d };
+  if (d < 0) return { txt: `Overdue by ${days(-d)}`, late: true, d };
+  if (d === 0) return { txt: 'Today', late: false, d };
+  if (d === 1) return { txt: 'Tomorrow', late: false, d };
+  return { txt: `In ${days(d)}`, late: false, d };
 }
 
 /* ---------- storage ---------- */
@@ -189,15 +197,19 @@ let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(DB)); }
-  catch (e) { alert('לא הצלחתי לשמור. אולי נגמר המקום בזיכרון, נסי לייצא גיבוי ולהקטין תמונות.'); }
+  catch (e) { alert('Could not save. Storage may be full; try exporting a backup and using smaller photos.'); }
 }
 function addLog(o) { DB.log.push({ t: new Date().toISOString(), season: season(), ...o }); }
 const plant = id => DB.plants.find(p => p.id === id);
 try { navigator.storage?.persist?.(); } catch (e) {}
+{ // migrate Hebrew names from the earlier Hebrew build
+  const LOC = { 'סלון': 'Living Room', 'מטבח': 'Kitchen', 'חדר שינה': 'Bedroom', 'מרפסת': 'Balcony', 'חדר עבודה': 'Office', 'אמבטיה': 'Bathroom', 'שירותים': 'Bathroom', 'מחסן': 'Storage' };
+  DB.plants.forEach(p => { if (LOC[p.location]) p.location = LOC[p.location]; if (p.name === 'דיפנבכיה גדולה') p.name = 'Large Dieffenbachia'; if (p.name === "Amazonian Elephant's Ear 'Polly'") p.name = "Amazonian Elephant's Ear 'Polly' (1)"; });
+}
 
 /* ---------- state / render ---------- */
 let view = { name: 'today' };
-let sheetCtx = null, formPhoto = null, lastUndo = null, toastTimer = null, locFilter = '';
+let todayTab = 'today', sheetCtx = null, formPhoto = null, lastUndo = null, toastTimer = null, locFilter = '';
 
 function go(v) { view = v; render(); scrollTo(0, 0); }
 function render() {
@@ -213,17 +225,28 @@ function vToday() {
   const items = [];
   DB.plants.forEach(p => Object.keys(p.tasks).forEach(k => { const i = info(p, k); if (i.due) items.push({ p, k, i, w: when(i.due) }); }));
   items.sort((a, b) => a.i.due.localeCompare(b.i.due));
-  const due = items.filter(x => x.w.d <= 0), soon = items.filter(x => x.w.d > 0 && x.w.d <= 7);
-  const row = x => `<div class="row ${x.w.late ? 'late' : ''}">
+  const late = items.filter(x => x.w.d < 0), now = items.filter(x => x.w.d === 0), soon = items.filter(x => x.w.d > 0 && x.w.d <= 30);
+  const row = (x, snz = true) => `<div class="row ${x.w.late ? 'late' : ''}">
     <button class="info-btn" data-act="open" data-p="${x.p.id}" style="display:contents">${thumb(x.p)}
-      <div class="info"><b>${esc(x.p.name)}</b><span class="sub ${x.w.late ? 'late' : ''}">${TASKS[x.k].i} ${TASKS[x.k].l} · ${x.w.txt}</span></div></button>
-    <button class="snz" data-act="snooze" data-p="${x.p.id}" data-k="${x.k}" aria-label="דחייה">⏰</button>
-    <button class="ok" data-act="done" data-p="${x.p.id}" data-k="${x.k}" aria-label="בוצע">✓</button></div>`;
-  let h = `<h1>היום</h1><div class="sub" style="margin:-10px 0 8px">${SEASONS[season()]} · ${shortDate(today())}</div>`;
-  if (!DB.plants.length) return h + `<div class="empty"><div class="big">🪴</div><p>עוד אין צמחים.<br>נתחיל מהראשון?</p><button class="secondary" data-act="new">הוספת צמח</button><br><br><button class="secondary" data-act="seed">הוספת הצמחים שלי (${MINE.length})</button></div>`;
-  if (!due.length) h += `<div class="empty"><div class="big">🎉</div><p>הכול מטופל להיום</p></div>`;
-  else h += due.map(row).join('');
-  if (soon.length) h += `<h2>בימים הקרובים</h2>` + soon.map(x => `<div class="row"><button style="display:contents" data-act="open" data-p="${x.p.id}">${thumb(x.p)}<div class="info"><b>${esc(x.p.name)}</b><span class="sub">${TASKS[x.k].i} ${TASKS[x.k].l} · ${x.w.txt}</span></div></button></div>`).join('');
+      <div class="info"><b><bdi>${esc(x.p.name)}</bdi></b><span class="sub ${x.w.late ? 'late' : ''}">${TASKS[x.k].i} ${TASKS[x.k].l} · ${x.w.txt}</span></div></button>
+    ${snz ? `<button class="snz" data-act="snooze" data-p="${x.p.id}" data-k="${x.k}" aria-label="Snooze">⏰</button>` : ''}
+    <button class="ok" data-act="done" data-p="${x.p.id}" data-k="${x.k}" aria-label="Done">✓</button></div>`;
+  let h = `<h1>Today</h1><div class="sub" style="margin:-10px 0 8px">${SEASONS[season()]} · ${shortDate(today())}</div>`;
+  if (!DB.plants.length) return h + `<div class="empty"><div class="big">🪴</div><p>No plants yet.<br>Add your first one?</p><button class="secondary" data-act="new">Add plant</button><br><br><button class="secondary" data-act="seed">Add my plants (${MINE.length})</button></div>`;
+  const byTask = {}; now.forEach(x => byTask[x.k] = (byTask[x.k] || 0) + 1);
+  const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'None';
+  h += `<div class="tiles"><div class="tile ok-t"><span>✔</span><div><small>Today's tasks</small><b>${todayTxt}</b></div></div>
+    <button class="tile late-t" data-act="tab2" data-v="today"><span>⏰</span><div><b>${late.length}</b><small>Overdue</small></div></button></div>`;
+  h += `<div class="seg"><button class="${todayTab === 'today' ? 'on' : ''}" data-act="tab2" data-v="today">Today</button><button class="${todayTab === 'upcoming' ? 'on' : ''}" data-act="tab2" data-v="upcoming">Upcoming</button></div>`;
+  if (todayTab === 'today') {
+    const due = [...late, ...now];
+    h += due.length ? due.map(x => row(x)).join('') : `<div class="empty"><div class="big">🎉</div><p>All done for today</p></div>`;
+  } else if (!soon.length) h += `<div class="empty"><div class="big">🌤️</div><p>No tasks in the next 30 days</p></div>`;
+  else {
+    const groups = {}; soon.forEach(x => (groups[x.i.due] = groups[x.i.due] || []).push(x));
+    h += Object.keys(groups).sort().map(d => { const g = groups[d], w = when(d);
+      return `<div class="card"><div class="task-head"><b style="font-size:17px">${w.txt}</b><span class="sub">${shortDate(d)}</span><span class="chip">${g.length === 1 ? '1 task' : g.length + ' tasks'}</span></div><div style="margin-top:8px">${g.map(x => row(x, false)).join('')}</div></div>`; }).join('');
+  }
   return h;
 }
 
@@ -231,48 +254,48 @@ function vPlants() {
   const locs = [...new Set(DB.plants.map(p => p.location).filter(Boolean))];
   if (locFilter && !locs.includes(locFilter)) locFilter = '';
   const list = DB.plants.filter(p => !locFilter || p.location === locFilter);
-  let h = `<h1>הצמחים שלי</h1>`;
-  if (locs.length > 1) h += `<div class="chips"><button class="chip ${locFilter ? '' : 'on'}" data-act="loc" data-v="">הכול</button>${locs.map(l => `<button class="chip ${locFilter === l ? 'on' : ''}" data-act="loc" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div>`;
-  if (!list.length) h += `<div class="empty"><div class="big">🪴</div><p>עוד אין צמחים</p></div>`;
+  let h = `<h1>Plants</h1>`;
+  if (locs.length > 1) h += `<div class="chips"><button class="chip ${locFilter ? '' : 'on'}" data-act="loc" data-v="">All</button>${locs.map(l => `<button class="chip ${locFilter === l ? 'on' : ''}" data-act="loc" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div>`;
+  if (!list.length) h += `<div class="empty"><div class="big">🪴</div><p>No plants yet</p></div>`;
   h += `<div class="grid">` + list.map(p => {
     const dues = Object.keys(p.tasks).map(k => info(p, k).due).filter(Boolean).sort();
     const w = dues[0] ? when(dues[0]) : null;
-    return `<button class="pcard" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b>${esc(p.name)}</b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
-  }).join('') + `</div><button class="fab" data-act="new" aria-label="הוספת צמח">+</button>`;
+    return `<button class="pcard" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b><bdi>${esc(p.name)}</bdi></b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
+  }).join('') + `</div><button class="fab" data-act="new" aria-label="Add plant">+</button>`;
   return h;
 }
 
 function histText(e) {
   const t = TASKS[e.task] || {};
-  if (e.type === 'done') return `${t.i || ''} ${t.d || 'בוצע'}${e.daysLate > 0 ? ` (באיחור של ${days(e.daysLate)})` : e.daysLate < 0 ? ` (מוקדם ${inDays(-e.daysLate)})` : ''}`;
-  if (e.type === 'snooze') return `⏰ ${t.l || ''} נדחה ${inDays(e.days)}${e.reason ? ` · ${e.reason}` : ''}`;
-  if (e.type === 'interval') return `🔁 ${t.l || ''}: תדירות ${e.from || '-'} ← ${e.to ?? 'מומלצת'}`;
-  if (e.type === 'task_add') return `➕ נוסף ${t.l}`;
-  if (e.type === 'task_remove') return `➖ הוסר ${t.l}`;
+  if (e.type === 'done') return `${t.i || ''} ${t.d || 'Done'}${e.daysLate > 0 ? ` (${days(e.daysLate)} late)` : e.daysLate < 0 ? ` (${days(-e.daysLate)} early)` : ''}`;
+  if (e.type === 'snooze') return `⏰ ${t.l || ''} snoozed ${days(e.days)}${e.reason ? ` · ${e.reason}` : ''}`;
+  if (e.type === 'interval') return `🔁 ${t.l || ''}: ${e.from || '-'} → ${e.to ?? 'recommended'} days`;
+  if (e.type === 'task_add') return `➕ Added ${t.l}`;
+  if (e.type === 'task_remove') return `➖ Removed ${t.l}`;
   return '';
 }
 
 function vPlant() {
   const p = plant(view.id); if (!p) return vToday();
   const sp = SPECIES[p.species] || SPECIES.other;
-  let h = `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="חזרה">→</button><h1>${esc(p.name)}</h1><button class="icon-btn" data-act="edit" data-p="${p.id}" aria-label="עריכה">✏️</button></div>`;
+  let h = `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="Back">←</button><h1><bdi>${esc(p.name)}</bdi></h1><button class="icon-btn" data-act="edit" data-p="${p.id}" aria-label="Edit">✏️</button></div>`;
   h += p.photo ? `<img class="hero" src="${p.photo}" alt="">` : `<div class="hero">${sp.e}</div>`;
   h += `<div class="sub">${esc(sp.n)}${p.location ? ' · ' + esc(p.location) : ''}</div>
-    <div class="sub">עציץ ${POT[optsOf(p).pot][0]} · אור ${LIGHT[optsOf(p).light][0]} · ${optsOf(p).mat === 't' ? 'טרקוטה' : 'פלסטיק / קרמיקה'}${optsOf(p).hot ? ' · מקום חם' : ''}</div>`;
+    <div class="sub">${POT[optsOf(p).pot][0]} pot · ${LIGHT[optsOf(p).light][0]} light · ${optsOf(p).mat === 't' ? 'Terracotta' : 'Plastic / ceramic'}${optsOf(p).hot ? ' · Warm spot' : ''}</div>`;
   Object.keys(p.tasks).forEach(k => {
     const i = info(p, k), T = TASKS[k], w = i.due ? when(i.due) : null;
     h += `<div class="card" style="margin-top:12px"><div class="task-head"><span style="font-size:22px">${T.i}</span><b>${T.l}</b>
-      <button class="secondary" data-act="freq" data-p="${p.id}" data-k="${k}">${i.interval ? 'כל ' + days(i.interval) : 'מושהה'} ✎</button></div>
-      <div class="sub" style="margin-top:6px">${i.interval ? (i.manual ? 'תדירות ידנית' : `מומלץ ל${SEASONS[season()]}${k === 'water' && waterMult(p) !== 1 ? ` (בסיס ${baseRec(p, k)}, מותאם לעציץ ואור)` : ''}`) : `אין המלצה ל${SEASONS[season()]}`}
-        · טיפול אחרון ${shortDate(p.tasks[k].last)}</div>
-      ${w ? `<div class="sub ${w.late ? 'late' : ''}" style="margin-top:2px">הבא: ${w.txt} (${shortDate(i.due)})</div>` : ''}
-      <div class="task-btns"><button class="secondary" data-act="snooze" data-p="${p.id}" data-k="${k}">⏰ דחייה</button><button class="primary" style="margin:0;padding:9px" data-act="done" data-p="${p.id}" data-k="${k}">✓ ${T.d}</button></div></div>`;
+      <button class="secondary" data-act="freq" data-p="${p.id}" data-k="${k}">${i.interval ? 'Every ' + days(i.interval) : 'Paused'} ✎</button></div>
+      <div class="sub" style="margin-top:6px">${i.interval ? (i.manual ? 'Manual frequency' : `Recommended for ${SEASONS[season()].toLowerCase()}${k === 'water' && waterMult(p) !== 1 ? ` (base ${baseRec(p, k)}, adjusted for pot and light)` : ''}`) : `No recommendation for ${SEASONS[season()].toLowerCase()}`}
+        · Last done ${shortDate(p.tasks[k].last)}</div>
+      ${w ? `<div class="sub ${w.late ? 'late' : ''}" style="margin-top:2px">Next: ${w.txt} (${shortDate(i.due)})</div>` : ''}
+      <div class="task-btns"><button class="secondary" data-act="snooze" data-p="${p.id}" data-k="${k}">⏰ Snooze</button><button class="primary" style="margin:0;padding:9px" data-act="done" data-p="${p.id}" data-k="${k}">✓ ${T.d}</button></div></div>`;
   });
   const missing = Object.keys(TASKS).filter(k => !p.tasks[k]);
-  if (missing.length) h += `<h2>הוספת טיפול</h2><div class="chips">${missing.map(k => `<button class="chip" data-act="addtask" data-p="${p.id}" data-k="${k}">${TASKS[k].i} ${TASKS[k].l}</button>`).join('')}</div>`;
-  h += `<h2>הערות</h2><textarea class="note" id="notes" data-p="${p.id}" placeholder="למשל: אוהב אור חזק, עלים צהובים...">${esc(p.notes || '')}</textarea>`;
+  if (missing.length) h += `<h2>Add a task</h2><div class="chips">${missing.map(k => `<button class="chip" data-act="addtask" data-p="${p.id}" data-k="${k}">${TASKS[k].i} ${TASKS[k].l}</button>`).join('')}</div>`;
+  h += `<h2>Notes</h2><textarea class="note" id="notes" data-p="${p.id}" placeholder="e.g. likes bright light, yellowing leaves...">${esc(p.notes || '')}</textarea>`;
   const hist = DB.log.filter(e => e.pid === p.id && histText(e)).slice(-15).reverse();
-  h += `<h2>היסטוריה</h2><div class="card">${hist.length ? hist.map(e => `<div class="hist"><span>${histText(e)}</span><span>${shortDate(e.date || e.t.slice(0, 10))}</span></div>`).join('') : '<div class="sub">עוד אין היסטוריה</div>'}</div>`;
+  h += `<h2>History</h2><div class="card">${hist.length ? hist.map(e => `<div class="hist"><span>${histText(e)}</span><span>${shortDate(e.date || e.t.slice(0, 10))}</span></div>`).join('') : '<div class="sub">No history yet</div>'}</div>`;
   return h;
 }
 
@@ -281,39 +304,39 @@ function vForm() {
   const sel = p?.species || 'pothos', o = optsOf(p || {});
   const opt = (m, cur) => Object.entries(m).map(([k, v]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${v[0]}</option>`).join('');
   const locs = [...new Set([...LOCATIONS, ...DB.plants.map(x => x.location).filter(Boolean)])];
-  return `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="חזרה">→</button><h1>${p ? 'עריכת צמח' : 'צמח חדש'}</h1></div>
-  <label class="photo-pick" for="photo" id="photolbl">${formPhoto ? `<img src="${formPhoto}" alt="">` : '📷 הוספת תמונה'}</label>
+  return `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="Back">←</button><h1>${p ? 'Edit plant' : 'New plant'}</h1></div>
+  <label class="photo-pick" for="photo" id="photolbl">${formPhoto ? `<img src="${formPhoto}" alt="">` : '📷 Add photo'}</label>
   <input type="file" id="photo" accept="image/*" hidden>
-  <label>שם<input id="f-name" value="${esc(p?.name || '')}" placeholder="למשל: הפוטוס של הסלון"></label>
-  <label>סוג צמח<select id="f-species">${Object.entries(SPECIES).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.e} ${v.n}</option>`).join('')}</select></label>
-  <label>מיקום<input id="f-loc" list="locs" value="${esc(p?.location || '')}" placeholder="סלון, מטבח..."><datalist id="locs">${locs.map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
-  <div class="card" style="margin-top:12px"><b>התאמה להשקיה</b><div class="sub">משפיע על התדירות המומלצת</div>
-    <label>גודל עציץ<select id="f-pot">${opt(POT, o.pot)}</select></label>
-    <label>אור<select id="f-light">${opt(LIGHT, o.light)}</select></label>
-    <label>חומר העציץ<select id="f-mat">${opt(MAT, o.mat)}</select></label>
-    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="f-hot" style="width:auto" ${o.hot ? 'checked' : ''}>מקום חם או יבש (ליד מזגן או חימום)</label></div>
-  ${p ? '' : `<label>מתי הושקה לאחרונה<input type="date" id="f-last" value="${today()}" max="${today()}"></label>`}
-  <button class="primary" data-act="saveplant">שמירה</button>
-  ${p ? `<button class="primary danger" style="background:none;border:1px solid var(--late)" data-act="delplant" data-p="${p.id}">מחיקת הצמח</button>` : ''}`;
+  <label>Name<input id="f-name" value="${esc(p?.name || '')}" placeholder="e.g. Living room pothos"></label>
+  <label>Plant type<select id="f-species">${Object.entries(SPECIES).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.e} ${v.n}</option>`).join('')}</select></label>
+  <label>Location<input id="f-loc" list="locs" value="${esc(p?.location || '')}" placeholder="Living Room, Kitchen..."><datalist id="locs">${locs.map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
+  <div class="card" style="margin-top:12px"><b>Watering adjustments</b><div class="sub">Affects the recommended frequency</div>
+    <label>Pot size<select id="f-pot">${opt(POT, o.pot)}</select></label>
+    <label>Light<select id="f-light">${opt(LIGHT, o.light)}</select></label>
+    <label>Pot material<select id="f-mat">${opt(MAT, o.mat)}</select></label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="f-hot" style="width:auto" ${o.hot ? 'checked' : ''}>Hot or dry spot (near AC or heating)</label></div>
+  ${p ? '' : `<label>Last watered<input type="date" id="f-last" value="${today()}" max="${today()}"></label>`}
+  <button class="primary" data-act="saveplant">Save</button>
+  ${p ? `<button class="primary danger" style="background:none;border:1px solid var(--late)" data-act="delplant" data-p="${p.id}">Delete plant</button>` : ''}`;
 }
 
 function vSettings() {
-  return `<h1>הגדרות</h1>
-  <div class="card"><b>מעקב התנהגות</b><p class="sub">האפליקציה שומרת יומן של כל טיפול ודחייה (${DB.log.length} אירועים). אחרי כמה שבועות אפשר לייצא ולשלוח לניתוח ולהצעות לשיפור המנגנון.</p>
-    <button class="secondary" data-act="exportlog" style="width:100%">ייצוא יומן</button></div>
-  <div class="card"><b>הצמחים שלי</b><p class="sub">הוספה בבת אחת של ${MINE.length} הצמחים שלך עם המיקומים. צמחים שכבר קיימים לא יוכפלו.</p>
-    <button class="secondary" data-act="seed" style="width:100%">הוספת הצמחים שלי</button></div>
-  <div class="card"><b>גיבוי</b><p class="sub">כל הנתונים נשמרים בטלפון בלבד. כדאי לגבות מדי פעם.</p>
-    <div class="btnrow"><button class="secondary" data-act="exportall">ייצוא גיבוי</button><button class="secondary" data-act="importall">שחזור מגיבוי</button></div></div>
-  <div class="card"><b>עונה נוכחית: ${SEASONS[season()]}</b><p class="sub">תדירויות ההשקיה המומלצות מתחלפות אוטומטית לפי העונה. אפשר תמיד לקבוע תדירות ידנית לצמח.</p></div>
-  <div class="card"><b>התקנה בטלפון</b><p class="sub">באייפון: שיתוף ← "הוסף למסך הבית". באנדרואיד: תפריט הדפדפן ← "התקן אפליקציה".</p></div>`;
+  return `<h1>Settings</h1>
+  <div class="card"><b>Behavior tracking</b><p class="sub">The app keeps a log of every task and snooze (${DB.log.length} events). After a few weeks, export it and share it for analysis and suggestions to improve the scheduling.</p>
+    <button class="secondary" data-act="exportlog" style="width:100%">Export log</button></div>
+  <div class="card"><b>My plants</b><p class="sub">Add all ${MINE.length} of your plants with their locations in one go. Existing plants won't be duplicated.</p>
+    <button class="secondary" data-act="seed" style="width:100%">Add my plants</button></div>
+  <div class="card"><b>Backup</b><p class="sub">All data is stored on this phone only. Back it up from time to time.</p>
+    <div class="btnrow"><button class="secondary" data-act="exportall">Export backup</button><button class="secondary" data-act="importall">Restore from backup</button></div></div>
+  <div class="card"><b>Current season: ${SEASONS[season()]}</b><p class="sub">Recommended watering frequencies change automatically with the season. You can always set a manual frequency for a plant.</p></div>
+  <div class="card"><b>Install on your phone</b><p class="sub">iPhone: Share → "Add to Home Screen". Android: browser menu → "Install app".</p></div>`;
 }
 
 /* ---------- sheets / toast ---------- */
 function openSheet(html) { const s = $('#sheet'); s.innerHTML = `<div class="backdrop" data-act="closesheet"></div><div class="panel">${html}</div>`; s.hidden = false; }
 function closeSheet() { const s = $('#sheet'); s.hidden = true; s.innerHTML = ''; sheetCtx = null; }
 function toast(msg, undo) {
-  const t = $('#toast'); t.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button data-act="undo">ביטול</button>' : ''}`; t.hidden = false;
+  const t = $('#toast'); t.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button data-act="undo">Undo</button>' : ''}`; t.hidden = false;
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; lastUndo = null; }, 6000);
 }
 
@@ -332,7 +355,7 @@ function doSnooze(n) {
   t.snoozeUntil = addDays(today(), n); t.snoozes = (t.snoozes || 0) + 1;
   addLog({ type: 'snooze', pid, plant: p.name, species: p.species, task: k, date: today(), planned: i.base, days: n, until: t.snoozeUntil,
     lateSoFar: diff(i.base, t.snoozeUntil), snoozeNo: t.snoozes, interval: i.interval, reason: reason || null });
-  save(); closeSheet(); render(); toast(`נדחה ל-${shortDate(t.snoozeUntil)}`, true);
+  save(); closeSheet(); render(); toast(`Snoozed to ${shortDate(t.snoozeUntil)}`, true);
 }
 function undo() {
   if (!lastUndo) return;
@@ -342,21 +365,26 @@ function undo() {
 
 const readOpts = () => ({ pot: $('#f-pot').value, light: $('#f-light').value, mat: $('#f-mat').value, hot: $('#f-hot').checked });
 const MINE = [
-  ['Alocasia zabarina', 'alocasia', 'מטבח'], ["Amazonian Elephant's Ear 'Polly'", 'alocasia', 'מטבח'], ["Amazonian Elephant's Ear 'Polly' (2)", 'alocasia', 'מטבח'],
-  ['Arrowhead', 'arrowhead', 'מטבח'], ["Arrowhead 'Pink Allusion'", 'arrowhead', 'מטבח'], ['Golden Pothos', 'pothos', 'מטבח'],
-  ["Pothos 'N'joy'", 'pothos', 'מטבח'], ['Satin Pothos', 'pothos', 'מטבח'], ['Jade Plant', 'jade', 'מטבח'],
-  ['Monstera', 'monstera', 'מטבח'], ['Monstera adansonii ssp laniata', 'monstera', 'מטבח'],
-  ['Avocado', 'avocado', 'סלון'], ['Peace Lily', 'spathi', 'סלון'], ['Porcelain Flower', 'hoya', 'סלון'],
-  ['Rattlesnake Plant', 'calathea', 'סלון'], ['Rubber Plant', 'ficus', 'סלון'], ['Zz Plant', 'zz', 'סלון'],
-  ["Candelabra spurge 'Cristata'", 'euphorbia', 'מרפסת'], ['Elephant Bush bonsai', 'portulacaria', 'מרפסת'],
-  ["Snake Plant 'Laurentii'", 'snake', 'חדר שינה'], ['Kentia palm', 'kentia', 'אמבטיה'], ['דיפנבכיה גדולה', 'dieffenbachia', 'מחסן']
+  ['Alocasia zabarina', 'alocasia', 'Kitchen', 5], ["Amazonian Elephant's Ear 'Polly' (1)", 'alocasia', 'Kitchen', 9], ["Amazonian Elephant's Ear 'Polly' (2)", 'alocasia', 'Kitchen', 3],
+  ['Arrowhead', 'arrowhead', 'Kitchen', 9], ["Arrowhead 'Pink Allusion'", 'arrowhead', 'Kitchen', 5], ['Golden Pothos', 'pothos', 'Bedroom', 9],
+  ["Pothos 'N'joy'", 'pothos', 'Kitchen', 5], ['Satin Pothos', 'pothos', 'Kitchen', 3], ['Jade Plant', 'jade', 'Kitchen', 3],
+  ['Monstera', 'monstera', 'Kitchen', 9], ['Monstera adansonii ssp laniata', 'monstera', 'Kitchen', 15],
+  ['Avocado', 'avocado', 'Living Room', 5], ['Peace Lily', 'spathi', 'Kitchen', 15], ['Porcelain Flower', 'hoya', 'Living Room', 9],
+  ['Rattlesnake Plant', 'calathea', 'Living Room', 15], ['Rubber Plant', 'ficus', 'Living Room', 15], ['Zz Plant', 'zz', 'Balcony', 25],
+  ["Candelabra spurge 'Cristata'", 'euphorbia', 'Balcony', 5], ['Elephant Bush bonsai', 'portulacaria', 'Balcony', 5],
+  ["Snake Plant 'Laurentii'", 'snake', 'Bedroom', 19], ['Kentia palm', 'kentia', 'Kitchen', 3], ['Large Dieffenbachia', 'dieffenbachia', 'Kitchen', 5]
 ];
 function seedMine() {
   const nowd = today(); let n = 0;
-  MINE.forEach(([name, species, location]) => {
-    if (DB.plants.some(p => p.name === name && p.location === location)) return;
-    const mk = () => ({ last: nowd, manual: null, snoozeUntil: null, snoozes: 0 });
-    const p = { id: uid(), name, species, location, photo: null, notes: '', created: nowd, opts: {}, tasks: { water: mk(), fertilize: mk() } };
+  MINE.forEach(([name, species, location, ago]) => {
+    const last = addDays(nowd, -ago), mk = d => ({ last: d, manual: null, snoozeUntil: null, snoozes: 0 });
+    const ex = DB.plants.find(p => p.name === name);
+    if (ex) { // already added: correct the location and the watering date (unless there is real care history)
+      ex.location = location;
+      if (ex.tasks.water && !DB.log.some(e => e.type === 'done' && e.pid === ex.id)) ex.tasks.water.last = last;
+      return;
+    }
+    const p = { id: uid(), name, species, location, photo: null, notes: '', created: nowd, opts: {}, tasks: { water: mk(last), fertilize: mk(nowd) } };
     DB.plants.push(p); addLog({ type: 'add', pid: p.id, plant: name, species, date: nowd, seed: true }); n++;
   });
   save(); return n;
@@ -387,6 +415,7 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const d = el.dataset, a = d.act;
   if (a === 'tab') go({ name: d.v });
+  else if (a === 'tab2') { todayTab = d.v; render(); }
   else if (a === 'open') go({ name: 'plant', id: d.p, from: view.name });
   else if (a === 'back') go(view.name === 'form' && view.id !== 'new' ? { name: 'plant', id: view.id } : { name: view.from || 'plants' });
   else if (a === 'new') { formPhoto = null; go({ name: 'form', id: 'new', from: view.name }); }
@@ -395,10 +424,10 @@ document.addEventListener('click', e => {
   else if (a === 'done') doDone(d.p, d.k);
   else if (a === 'snooze') {
     const p = plant(d.p); sheetCtx = { pid: d.p, k: d.k, reason: null };
-    openSheet(`<h3>לדחות את ${TASKS[d.k].l}?</h3><div class="sub">${esc(p.name)} · אפשר לבחור סיבה (לא חובה), ואז לכמה זמן</div>
+    openSheet(`<h3>Snooze ${TASKS[d.k].l.toLowerCase()}?</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · Pick a reason (optional), then how long</div>
       <div class="chips">${REASONS.map(r => `<button class="chip" data-act="reason" data-v="${r}">${r}</button>`).join('')}</div>
-      <div class="btnrow"><button class="secondary" data-act="snoozego" data-n="1">יום</button><button class="secondary" data-act="snoozego" data-n="2">יומיים</button></div>
-      <div class="btnrow"><input type="number" id="custom-n" min="1" max="90" inputmode="numeric" placeholder="מספר ימים"><button class="secondary" data-act="snoozego" data-n="custom">דחייה</button></div>`);
+      <div class="btnrow"><button class="secondary" data-act="snoozego" data-n="1">1 day</button><button class="secondary" data-act="snoozego" data-n="2">2 days</button></div>
+      <div class="btnrow"><input type="number" id="custom-n" min="1" max="90" inputmode="numeric" placeholder="Days"><button class="secondary" data-act="snoozego" data-n="custom">Snooze</button></div>`);
   }
   else if (a === 'reason') { sheetCtx.reason = sheetCtx.reason === d.v ? null : d.v; document.querySelectorAll('.panel .chip').forEach(c => c.classList.toggle('on', c.dataset.v === sheetCtx.reason)); }
   else if (a === 'snoozego') { const n = d.n === 'custom' ? parseInt($('#custom-n').value, 10) : +d.n; if (n >= 1 && n <= 90) doSnooze(n); }
@@ -406,18 +435,18 @@ document.addEventListener('click', e => {
   else if (a === 'undo') undo();
   else if (a === 'freq') {
     const p = plant(d.p), i = info(p, d.k); sheetCtx = { pid: d.p, k: d.k };
-    openSheet(`<h3>תדירות ${TASKS[d.k].l}</h3><div class="sub">${esc(p.name)} · המלצה ל${SEASONS[season()]}: ${i.rec ? 'כל ' + days(i.rec) : 'מושהה'}</div>
-      <label>כל כמה ימים<input type="number" id="freq-n" min="1" max="730" inputmode="numeric" value="${i.interval || ''}"></label>
-      <label>טיפול אחרון<input type="date" id="last-d" value="${p.tasks[d.k].last}" max="${today()}"></label>
-      <button class="primary" style="margin-top:6px" data-act="freqsave">שמירה</button>
-      ${i.manual ? `<button class="secondary" style="width:100%;margin-top:8px" data-act="freqreset">חזרה להמלצה</button>` : ''}
-      ${d.k !== 'water' ? `<button class="secondary danger" style="width:100%;margin-top:8px" data-act="rmtask">הסרת הטיפול</button>` : ''}`);
+    openSheet(`<h3>${TASKS[d.k].l} frequency</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · Recommended for ${SEASONS[season()].toLowerCase()}: ${i.rec ? 'every ' + days(i.rec) : 'paused'}</div>
+      <label>Every how many days<input type="number" id="freq-n" min="1" max="730" inputmode="numeric" value="${i.interval || ''}"></label>
+      <label>Last done<input type="date" id="last-d" value="${p.tasks[d.k].last}" max="${today()}"></label>
+      <button class="primary" style="margin-top:6px" data-act="freqsave">Save</button>
+      ${i.manual ? `<button class="secondary" style="width:100%;margin-top:8px" data-act="freqreset">Back to recommended</button>` : ''}
+      ${d.k !== 'water' ? `<button class="secondary danger" style="width:100%;margin-top:8px" data-act="rmtask">Remove task</button>` : ''}`);
   }
   else if (a === 'freqsave' || a === 'freqreset') {
     const { pid, k } = sheetCtx, p = plant(pid), t = p.tasks[k], from = info(p, k).interval;
     const ld = $('#last-d').value; if (ld && ld <= today()) t.last = ld;
     const raw = $('#freq-n').value, n = raw === '' ? null : parseInt(raw, 10);
-    let to; // undefined = בלי שינוי בתדירות
+    let to; // undefined = no change to the frequency
     if (a === 'freqreset') { if (t.manual) to = null; }
     else if (n >= 1 && n !== from) to = n;
     if (to !== undefined) {
@@ -452,7 +481,7 @@ document.addEventListener('click', e => {
   }
   else if (a === 'delplant') {
     const p = plant(d.p);
-    if (confirm(`למחוק את ${p.name}? אי אפשר לשחזר.`)) {
+    if (confirm(`Delete ${p.name}? This can't be undone.`)) {
       DB.plants = DB.plants.filter(x => x.id !== p.id); addLog({ type: 'delete', pid: p.id, plant: p.name, date: today() }); save(); go({ name: 'plants' });
     }
   }
@@ -462,7 +491,7 @@ document.addEventListener('click', e => {
         tasks: Object.fromEntries(Object.entries(p.tasks).map(([k, t]) => [k, { manual: t.manual, recommended: recInterval(p, k) }])) })), log: DB.log });
   }
   else if (a === 'seed') {
-    if (confirm(`להוסיף ${MINE.length} צמחים עם המיקומים שלהם? מניחים שהשקית את כולם היום, ואפשר לתקן בכל צמח (לחיצה על התדירות ← טיפול אחרון).`)) { seedMine(); go({ name: 'plants' }); }
+    if (confirm(`Add ${MINE.length} plants with their locations? Last-watered dates come from your other app; plants already added get their date corrected (unless you logged care in this app). You can edit any date via the frequency button → Last done.`)) { seedMine(); go({ name: 'plants' }); }
   }
   else if (a === 'exportall') shareJSON(`plants-backup-${today()}.json`, DB);
   else if (a === 'importall') $('#importfile').click();
@@ -472,15 +501,15 @@ document.addEventListener('change', async e => {
   const el = e.target;
   if (el.id === 'photo' && el.files[0]) {
     formPhoto = await resizePhoto(el.files[0]);
-    $('#photolbl').innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : '📷 הוספת תמונה';
+    $('#photolbl').innerHTML = formPhoto ? `<img src="${formPhoto}" alt="">` : '📷 Add photo';
   } else if (el.id === 'notes') {
     const p = plant(el.dataset.p); if (p) { p.notes = el.value; save(); }
   } else if (el.id === 'importfile' && el.files[0]) {
     try {
       const data = JSON.parse(await el.files[0].text());
       if (!Array.isArray(data.plants) || !Array.isArray(data.log)) throw 0;
-      if (confirm('לשחזר מהגיבוי? הנתונים הנוכחיים יוחלפו.')) { DB = data; save(); go({ name: 'today' }); }
-    } catch (x) { alert('הקובץ לא נראה כמו גיבוי של האפליקציה.'); }
+      if (confirm('Restore from backup? Current data will be replaced.')) { DB = data; save(); go({ name: 'today' }); }
+    } catch (x) { alert('This file does not look like a backup of this app.'); }
     el.value = '';
   }
 });
