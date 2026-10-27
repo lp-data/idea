@@ -87,6 +87,15 @@ nav button.on{color:var(--green)}
 #toast[hidden]{display:none}
 #toast button{color:#8fe3b0;font-weight:700}
 .note{width:100%;min-height:80px}
+.tiles{display:flex;gap:8px;margin:8px 0 12px}
+.tile{flex:1;display:flex;align-items:center;gap:10px;border-radius:16px;padding:12px;text-align:start}
+.tile>span{font-size:22px}.tile small{display:block;font-size:12px;opacity:.8}.tile b{font-size:16px}
+.ok-t{background:var(--green-soft);color:var(--green-d)}
+.late-t{background:var(--late-soft);color:var(--late);flex:none;min-width:110px}
+.seg{display:flex;gap:4px;background:var(--green-soft);border-radius:99px;padding:4px;width:fit-content;margin:0 auto 14px}
+.seg button{padding:8px 22px;border-radius:99px;color:var(--green-d);font-weight:600}
+.seg button.on{background:var(--green);color:#fff}
+.card .row{box-shadow:none;background:var(--bg);margin-bottom:6px}
 </style>
 </head>
 <body>
@@ -197,7 +206,7 @@ try { navigator.storage?.persist?.(); } catch (e) {}
 
 /* ---------- state / render ---------- */
 let view = { name: 'today' };
-let sheetCtx = null, formPhoto = null, lastUndo = null, toastTimer = null, locFilter = '';
+let todayTab = 'today', sheetCtx = null, formPhoto = null, lastUndo = null, toastTimer = null, locFilter = '';
 
 function go(v) { view = v; render(); scrollTo(0, 0); }
 function render() {
@@ -213,17 +222,28 @@ function vToday() {
   const items = [];
   DB.plants.forEach(p => Object.keys(p.tasks).forEach(k => { const i = info(p, k); if (i.due) items.push({ p, k, i, w: when(i.due) }); }));
   items.sort((a, b) => a.i.due.localeCompare(b.i.due));
-  const due = items.filter(x => x.w.d <= 0), soon = items.filter(x => x.w.d > 0 && x.w.d <= 7);
-  const row = x => `<div class="row ${x.w.late ? 'late' : ''}">
+  const late = items.filter(x => x.w.d < 0), now = items.filter(x => x.w.d === 0), soon = items.filter(x => x.w.d > 0 && x.w.d <= 30);
+  const row = (x, snz = true) => `<div class="row ${x.w.late ? 'late' : ''}">
     <button class="info-btn" data-act="open" data-p="${x.p.id}" style="display:contents">${thumb(x.p)}
-      <div class="info"><b>${esc(x.p.name)}</b><span class="sub ${x.w.late ? 'late' : ''}">${TASKS[x.k].i} ${TASKS[x.k].l} · ${x.w.txt}</span></div></button>
-    <button class="snz" data-act="snooze" data-p="${x.p.id}" data-k="${x.k}" aria-label="דחייה">⏰</button>
+      <div class="info"><b><bdi>${esc(x.p.name)}</bdi></b><span class="sub ${x.w.late ? 'late' : ''}">${TASKS[x.k].i} ${TASKS[x.k].l} · ${x.w.txt}</span></div></button>
+    ${snz ? `<button class="snz" data-act="snooze" data-p="${x.p.id}" data-k="${x.k}" aria-label="דחייה">⏰</button>` : ''}
     <button class="ok" data-act="done" data-p="${x.p.id}" data-k="${x.k}" aria-label="בוצע">✓</button></div>`;
   let h = `<h1>היום</h1><div class="sub" style="margin:-10px 0 8px">${SEASONS[season()]} · ${shortDate(today())}</div>`;
   if (!DB.plants.length) return h + `<div class="empty"><div class="big">🪴</div><p>עוד אין צמחים.<br>נתחיל מהראשון?</p><button class="secondary" data-act="new">הוספת צמח</button><br><br><button class="secondary" data-act="seed">הוספת הצמחים שלי (${MINE.length})</button></div>`;
-  if (!due.length) h += `<div class="empty"><div class="big">🎉</div><p>הכול מטופל להיום</p></div>`;
-  else h += due.map(row).join('');
-  if (soon.length) h += `<h2>בימים הקרובים</h2>` + soon.map(x => `<div class="row"><button style="display:contents" data-act="open" data-p="${x.p.id}">${thumb(x.p)}<div class="info"><b>${esc(x.p.name)}</b><span class="sub">${TASKS[x.k].i} ${TASKS[x.k].l} · ${x.w.txt}</span></div></button></div>`).join('');
+  const byTask = {}; now.forEach(x => byTask[x.k] = (byTask[x.k] || 0) + 1);
+  const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'אין';
+  h += `<div class="tiles"><div class="tile ok-t"><span>✔</span><div><small>משימות להיום</small><b>${todayTxt}</b></div></div>
+    <button class="tile late-t" data-act="tab2" data-v="today"><span>⏰</span><div><b>${late.length}</b><small>באיחור</small></div></button></div>`;
+  h += `<div class="seg"><button class="${todayTab === 'today' ? 'on' : ''}" data-act="tab2" data-v="today">היום</button><button class="${todayTab === 'upcoming' ? 'on' : ''}" data-act="tab2" data-v="upcoming">בקרוב</button></div>`;
+  if (todayTab === 'today') {
+    const due = [...late, ...now];
+    h += due.length ? due.map(x => row(x)).join('') : `<div class="empty"><div class="big">🎉</div><p>הכול מטופל להיום</p></div>`;
+  } else if (!soon.length) h += `<div class="empty"><div class="big">🌤️</div><p>אין משימות בחודש הקרוב</p></div>`;
+  else {
+    const groups = {}; soon.forEach(x => (groups[x.i.due] = groups[x.i.due] || []).push(x));
+    h += Object.keys(groups).sort().map(d => { const g = groups[d], w = when(d);
+      return `<div class="card"><div class="task-head"><b style="font-size:17px">${w.txt}</b><span class="sub">${shortDate(d)}</span><span class="chip">${g.length === 1 ? 'משימה אחת' : g.length + ' משימות'}</span></div><div style="margin-top:8px">${g.map(x => row(x, false)).join('')}</div></div>`; }).join('');
+  }
   return h;
 }
 
@@ -237,7 +257,7 @@ function vPlants() {
   h += `<div class="grid">` + list.map(p => {
     const dues = Object.keys(p.tasks).map(k => info(p, k).due).filter(Boolean).sort();
     const w = dues[0] ? when(dues[0]) : null;
-    return `<button class="pcard" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b>${esc(p.name)}</b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
+    return `<button class="pcard" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b><bdi>${esc(p.name)}</bdi></b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
   }).join('') + `</div><button class="fab" data-act="new" aria-label="הוספת צמח">+</button>`;
   return h;
 }
@@ -255,7 +275,7 @@ function histText(e) {
 function vPlant() {
   const p = plant(view.id); if (!p) return vToday();
   const sp = SPECIES[p.species] || SPECIES.other;
-  let h = `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="חזרה">→</button><h1>${esc(p.name)}</h1><button class="icon-btn" data-act="edit" data-p="${p.id}" aria-label="עריכה">✏️</button></div>`;
+  let h = `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="חזרה">→</button><h1><bdi>${esc(p.name)}</bdi></h1><button class="icon-btn" data-act="edit" data-p="${p.id}" aria-label="עריכה">✏️</button></div>`;
   h += p.photo ? `<img class="hero" src="${p.photo}" alt="">` : `<div class="hero">${sp.e}</div>`;
   h += `<div class="sub">${esc(sp.n)}${p.location ? ' · ' + esc(p.location) : ''}</div>
     <div class="sub">עציץ ${POT[optsOf(p).pot][0]} · אור ${LIGHT[optsOf(p).light][0]} · ${optsOf(p).mat === 't' ? 'טרקוטה' : 'פלסטיק / קרמיקה'}${optsOf(p).hot ? ' · מקום חם' : ''}</div>`;
@@ -387,6 +407,7 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const d = el.dataset, a = d.act;
   if (a === 'tab') go({ name: d.v });
+  else if (a === 'tab2') { todayTab = d.v; render(); }
   else if (a === 'open') go({ name: 'plant', id: d.p, from: view.name });
   else if (a === 'back') go(view.name === 'form' && view.id !== 'new' ? { name: 'plant', id: view.id } : { name: view.from || 'plants' });
   else if (a === 'new') { formPhoto = null; go({ name: 'form', id: 'new', from: view.name }); }
@@ -395,7 +416,7 @@ document.addEventListener('click', e => {
   else if (a === 'done') doDone(d.p, d.k);
   else if (a === 'snooze') {
     const p = plant(d.p); sheetCtx = { pid: d.p, k: d.k, reason: null };
-    openSheet(`<h3>לדחות את ${TASKS[d.k].l}?</h3><div class="sub">${esc(p.name)} · אפשר לבחור סיבה (לא חובה), ואז לכמה זמן</div>
+    openSheet(`<h3>לדחות את ${TASKS[d.k].l}?</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · אפשר לבחור סיבה (לא חובה), ואז לכמה זמן</div>
       <div class="chips">${REASONS.map(r => `<button class="chip" data-act="reason" data-v="${r}">${r}</button>`).join('')}</div>
       <div class="btnrow"><button class="secondary" data-act="snoozego" data-n="1">יום</button><button class="secondary" data-act="snoozego" data-n="2">יומיים</button></div>
       <div class="btnrow"><input type="number" id="custom-n" min="1" max="90" inputmode="numeric" placeholder="מספר ימים"><button class="secondary" data-act="snoozego" data-n="custom">דחייה</button></div>`);
@@ -406,7 +427,7 @@ document.addEventListener('click', e => {
   else if (a === 'undo') undo();
   else if (a === 'freq') {
     const p = plant(d.p), i = info(p, d.k); sheetCtx = { pid: d.p, k: d.k };
-    openSheet(`<h3>תדירות ${TASKS[d.k].l}</h3><div class="sub">${esc(p.name)} · המלצה ל${SEASONS[season()]}: ${i.rec ? 'כל ' + days(i.rec) : 'מושהה'}</div>
+    openSheet(`<h3>תדירות ${TASKS[d.k].l}</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · המלצה ל${SEASONS[season()]}: ${i.rec ? 'כל ' + days(i.rec) : 'מושהה'}</div>
       <label>כל כמה ימים<input type="number" id="freq-n" min="1" max="730" inputmode="numeric" value="${i.interval || ''}"></label>
       <label>טיפול אחרון<input type="date" id="last-d" value="${p.tasks[d.k].last}" max="${today()}"></label>
       <button class="primary" style="margin-top:6px" data-act="freqsave">שמירה</button>
