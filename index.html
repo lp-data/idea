@@ -369,17 +369,18 @@ const MINE = [
   ['Arrowhead', 'arrowhead', 'Kitchen', 9], ["Arrowhead 'Pink Allusion'", 'arrowhead', 'Kitchen', 5], ['Golden Pothos', 'pothos', 'Kitchen', 9],
   ["Pothos 'N'joy'", 'pothos', 'Kitchen', 5], ['Satin Pothos', 'pothos', 'Kitchen', 3], ['Jade Plant', 'jade', 'Kitchen', 3],
   ['Monstera', 'monstera', 'Kitchen', 9], ['Monstera adansonii ssp laniata', 'monstera', 'Kitchen', 15],
-  ['Avocado', 'avocado', 'Living Room', 5], ['Peace Lily', 'spathi', 'Living Room', 15], ['Porcelain Flower', 'hoya', 'Living Room', 9],
-  ['Rattlesnake Plant', 'calathea', 'Living Room', 15], ['Rubber Plant', 'ficus', 'Living Room', 15], ['Zz Plant', 'zz', 'Living Room', 25],
+  ['Avocado', 'avocado', 'Living Room', 5], ['Peace Lily', 'spathi', 'Kitchen', 15], ['Porcelain Flower', 'hoya', 'Living Room', 9],
+  ['Rattlesnake Plant', 'calathea', 'Living Room', 15], ['Rubber Plant', 'ficus', 'Living Room', 15], ['Zz Plant', 'zz', 'Balcony', 25],
   ["Candelabra spurge 'Cristata'", 'euphorbia', 'Balcony', 5], ['Elephant Bush bonsai', 'portulacaria', 'Balcony', 5],
-  ["Snake Plant 'Laurentii'", 'snake', 'Bedroom', 19], ['Kentia palm', 'kentia', 'Bathroom', 3], ['Large Dieffenbachia', 'dieffenbachia', 'Storage', 5]
+  ["Snake Plant 'Laurentii'", 'snake', 'Bedroom', 19], ['Kentia palm', 'kentia', 'Kitchen', 3], ['Large Dieffenbachia', 'dieffenbachia', 'Kitchen', 5]
 ];
 function seedMine() {
   const nowd = today(); let n = 0;
   MINE.forEach(([name, species, location, ago]) => {
     const last = addDays(nowd, -ago), mk = d => ({ last: d, manual: null, snoozeUntil: null, snoozes: 0 });
-    const ex = DB.plants.find(p => p.name === name && p.location === location);
-    if (ex) { // already added: just correct the watering date, unless there is real care history
+    const ex = DB.plants.find(p => p.name === name);
+    if (ex) { // already added: correct the location and the watering date (unless there is real care history)
+      ex.location = location;
       if (ex.tasks.water && !DB.log.some(e => e.type === 'done' && e.pid === ex.id)) ex.tasks.water.last = last;
       return;
     }
