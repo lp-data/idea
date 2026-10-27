@@ -192,6 +192,7 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
+const VERSION = '2026-10-27.d';
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -329,6 +330,8 @@ function vSettings() {
   <div class="card"><b>Backup</b><p class="sub">All data is stored on this phone only. Back it up from time to time.</p>
     <div class="btnrow"><button class="secondary" data-act="exportall">Export backup</button><button class="secondary" data-act="importall">Restore from backup</button></div></div>
   <div class="card"><b>Current season: ${SEASONS[season()]}</b><p class="sub">Recommended watering frequencies change automatically with the season. You can always set a manual frequency for a plant.</p></div>
+  <div class="card"><b>App version</b><p class="sub">${VERSION}. If something looks out of date, reload the latest version (your plants and history are kept).</p>
+    <button class="secondary" data-act="reload" style="width:100%">Reload latest version</button></div>
   <div class="card"><b>Install on your phone</b><p class="sub">iPhone: Share → "Add to Home Screen". Android: browser menu → "Install app".</p></div>`;
 }
 
@@ -492,6 +495,16 @@ document.addEventListener('click', e => {
   }
   else if (a === 'seed') {
     if (confirm(`Add ${MINE.length} plants with their locations? Last-watered dates come from your other app; plants already added get their date corrected (unless you logged care in this app). You can edit any date via the frequency button → Last done.`)) { seedMine(); go({ name: 'plants' }); }
+  }
+  else if (a === 'reload') {
+    (async () => {
+      try {
+        const rs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
+        await Promise.all(rs.map(r => r.unregister()));
+        await Promise.all((await caches.keys()).map(k => caches.delete(k)));
+      } catch (e) {}
+      location.reload();
+    })();
   }
   else if (a === 'exportall') shareJSON(`plants-backup-${today()}.json`, DB);
   else if (a === 'importall') $('#importfile').click();
