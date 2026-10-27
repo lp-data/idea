@@ -119,6 +119,15 @@ nav button.on{color:var(--green-d);background:var(--green-soft)}
 .card .row{box-shadow:none;background:var(--bg);margin-bottom:8px}
 .room{display:flex;align-items:center;gap:8px;margin-top:10px}.room b{flex:1;font-weight:600}.room select{width:190px;padding:9px}
 .build{text-align:center;font-size:12px;color:var(--muted);margin:30px 0 4px}
+:is([hidden]){display:none!important}
+.segrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 16px}.segrow .seg{margin:0}
+.roomhead{display:flex;align-items:center;gap:10px;margin:20px 0 8px}.roomhead b{font:600 17px var(--font-d)}.roomhead .sub{flex:1}.roomhead .secondary{padding:7px 12px;font-size:14px}
+.cg{display:grid;grid-template-columns:78px 1fr;gap:8px;margin-bottom:12px;font-size:15px}.cg>span{font-size:13px;font-weight:500;color:var(--muted);padding-top:2px}
+.pet{display:inline-block;padding:6px 12px;border-radius:10px;font-size:13px;font-weight:600;background:var(--green-soft);color:var(--green-d)}.pet.bad{background:var(--late-soft);color:var(--late)}
+.tip{background:var(--green-soft);color:var(--green-d);border-radius:14px;padding:11px 13px;margin-top:12px;font-size:14px}.tip .btnrow{margin:10px 0 0}.tip .secondary{background:var(--card)}
+.search{margin-bottom:12px}
+.nudge{border:1px solid var(--line)}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.stat div{background:var(--green-soft);border-radius:14px;padding:10px 8px;text-align:center}.stat b{display:block;font:600 22px var(--font-d);color:var(--green-d)}.stat small{font-size:12px;color:var(--muted)}
 .enter>*{animation:rise .42s var(--ease) both}
 .enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(4){animation-delay:.12s}.enter>*:nth-child(n+5){animation-delay:.16s}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -180,6 +189,36 @@ const IC = {
   plant: '<path d="M12 21v-9M12 13c0-4 3-6.5 7-6.5 0 4-3 6.5-7 6.5zM12 16c0-3-2.2-5-5.5-5 0 3 2.2 5 5.5 5zM8 21h8"/>'
 };
 const svg = (n, cls = 'ti') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
+const CARE = {
+  pothos: { light: 'Bright to medium, indirect', water: 'Water when the top 2–3 cm are dry', tip: 'Droops when thirsty and bounces back fast. Yellow leaves usually mean too much water.', pet: 'bad' },
+  monstera: { light: 'Bright, indirect', water: 'Let the top 3–5 cm dry out', tip: 'Give it a pole to climb for bigger leaves, and wipe the leaves now and then.', pet: 'bad' },
+  ficus: { light: 'Bright, indirect; tolerates some sun', water: 'Water when the top 3–5 cm are dry', tip: 'Dropping lower leaves points to overwatering or a recent move. The milky sap can irritate skin.', pet: 'bad' },
+  snake: { light: 'Low to bright light', water: 'Let the soil dry out completely', tip: 'Very forgiving. The main risk is overwatering, especially in winter.', pet: 'bad' },
+  spathi: { light: 'Medium to low light, no harsh sun', water: 'Water when the top 2 cm are dry', tip: 'Droops dramatically when thirsty and recovers within hours. Brown tips can mean dry air or minerals in tap water.', pet: 'bad' },
+  alocasia: { light: 'Bright, indirect', water: 'Keep lightly moist, never soggy', tip: 'It can go dormant and drop leaves in cool, dim months. Water much less then.', pet: 'bad' },
+  arrowhead: { light: 'Medium to bright, indirect', water: 'Water when the top 2–3 cm are dry', tip: 'Pinch the tips to keep it bushy. Brown leaf edges suggest dry air.', pet: 'bad' },
+  calathea: { light: 'Medium, indirect, no direct sun', water: 'Keep lightly moist; water when the top 2 cm are dry', tip: 'Prefers filtered or rain water and humidity. Curling leaves mean thirst or dry air.', pet: 'ok' },
+  kentia: { light: 'Medium to bright, indirect; tolerates low light', water: 'Water when the top 3–5 cm are dry', tip: 'Slow growing and long lived. Never let it sit in water.', pet: 'ok' },
+  hoya: { light: 'Bright, indirect; some direct morning sun', water: 'Water when the soil is mostly dry', tip: 'Do not cut the old flower stalks; it blooms from the same spurs.', pet: 'ok' },
+  dieffenbachia: { light: 'Medium to bright, no direct sun', water: 'Water when the top 3–5 cm are dry', tip: 'The sap irritates skin and mouths. Wear gloves when pruning.', pet: 'bad' },
+  avocado: { light: 'As much light as you can give', water: 'Keep evenly moist, never soggy', tip: 'Brown leaf tips often mean salt build-up. Flush the pot with plain water now and then.', pet: 'bad' },
+  jade: { light: 'Bright light, some direct sun', water: 'Soak, then let the soil dry out completely', tip: 'Wrinkled leaves mean thirst; mushy leaves mean too much water.', pet: 'bad' },
+  portulacaria: { light: 'Bright light, some direct sun', water: 'Soak, then let the soil dry out', tip: 'Drops leaves when over- or underwatered. Prune to shape it.', pet: 'ok' },
+  zz: { light: 'Low to bright, indirect', water: 'Let the soil dry out almost completely', tip: 'It stores water in its rhizomes, so skipping a watering is safer than an extra one.', pet: 'bad' },
+  euphorbia: { light: 'Bright light', water: 'Soak, then let the soil dry out completely', tip: 'The milky sap irritates skin and eyes. Wear gloves when handling or cutting.', pet: 'bad' },
+  orchid: { light: 'Bright, indirect', water: 'Water when the roots turn silvery', tip: 'Never let it sit in water.', pet: 'ok' },
+  fern: { light: 'Medium, indirect', water: 'Keep evenly moist', tip: 'Likes humidity. A bright bathroom suits it.', pet: 'ok' },
+  succulent: { light: 'Bright light', water: 'Soak, then let the soil dry out completely', tip: 'Stretching toward the light means it wants more of it.', pet: 'var' },
+  cactus: { light: 'Bright light, direct sun is fine', water: 'Soak, then let the soil dry out completely', tip: 'Water far less in winter.', pet: 'var' },
+  herb: { light: 'A sunny window', water: 'Keep evenly moist', tip: 'Pick often to keep it bushy.', pet: 'var' }
+};
+const PETS = { bad: ['Toxic to cats and dogs', 'bad'], ok: ['Non-toxic to cats and dogs', ''], var: ['Pet safety varies by species', ''] };
+function careCard(p) {
+  const c = CARE[p.species]; if (!c) return '';
+  const pet = PETS[c.pet];
+  return `<h2>Care guide</h2><div class="card"><div class="cg"><span>Light</span><div>${c.light}</div></div><div class="cg"><span>Watering</span><div>${c.water}</div></div><div class="cg"><span>Tip</span><div>${c.tip}</div></div>
+    <span class="pet ${pet[1]}">${pet[0]}</span><p class="sub" style="margin:10px 0 0">General guidance, not veterinary advice.</p></div>`;
+}
 const SPECIES = {
   pothos:        { n: 'Pothos',               e: '🌿', water: S(6, 6, 8, 9) },
   monstera:      { n: 'Monstera',           e: '🌱', water: S(8, 8, 12, 17) },
@@ -271,8 +310,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-10-28.a';
-const BUILD = '27/10/2026 23:42'; // update on every deploy
+const VERSION = '2026-10-28.b';
+const BUILD = '27/10/2026 23:45'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -283,7 +322,10 @@ function save() {
 function addLog(o) { DB.log.push({ t: new Date().toISOString(), season: season(), ...o }); }
 const plant = id => DB.plants.find(p => p.id === id);
 try { navigator.storage?.persist?.(); } catch (e) {}
-DB.rooms = DB.rooms || {};
+function normalizeDB() { DB.rooms = DB.rooms || {}; DB.meta = DB.meta || {}; if (!DB.meta.firstUse) DB.meta.firstUse = today(); }
+normalizeDB();
+const UI = (() => { try { return JSON.parse(localStorage.getItem('plants_ui')) || {}; } catch (e) { return {}; } })();
+const saveUI = () => { try { localStorage.setItem('plants_ui', JSON.stringify(UI)); } catch (e) {} };
 { // migrate Hebrew names from the earlier Hebrew build
   const LOC = { 'סלון': 'Living Room', 'מטבח': 'Kitchen', 'חדר שינה': 'Bedroom', 'מרפסת': 'Balcony', 'חדר עבודה': 'Office', 'אמבטיה': 'Bathroom', 'שירותים': 'Bathroom', 'מחסן': 'Storage' };
   DB.plants.forEach(p => { if (LOC[p.location]) p.location = LOC[p.location]; if (p.name === 'דיפנבכיה גדולה') p.name = 'Large Dieffenbachia'; if (p.name === "Amazonian Elephant's Ear 'Polly'") p.name = "Amazonian Elephant's Ear 'Polly' (1)"; });
@@ -319,19 +361,24 @@ function vToday() {
   if (!DB.plants.length) return h + `<div class="empty"><div class="art">${svg('plant')}</div><p><b>No plants yet</b><br>Add your first plant to start tracking its watering and care.</p><button class="secondary" data-act="new">Add a plant</button><br><br><button class="secondary" data-act="seed">Import my plants (${MINE.length})</button></div>`;
   const byTask = {}; now.forEach(x => byTask[x.k] = (byTask[x.k] || 0) + 1);
   const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'Nothing';
+  h += backupNudge();
   h += `<div class="tiles"><div class="tile ok-t">${svg('check')}<div><small>Due today</small><b>${todayTxt}</b></div></div>
     <button class="tile late-t" data-act="tab2" data-v="today">${svg('clock')}<div><b>${late.length}</b><small>Overdue</small></div></button></div>`;
-  h += `<div class="seg"><button class="${todayTab === 'today' ? 'on' : ''}" data-act="tab2" data-v="today">Today</button><button class="${todayTab === 'upcoming' ? 'on' : ''}" data-act="tab2" data-v="upcoming">Upcoming</button></div>`;
+  h += `<div class="segrow"><div class="seg"><button class="${todayTab === 'today' ? 'on' : ''}" data-act="tab2" data-v="today">Today</button><button class="${todayTab === 'upcoming' ? 'on' : ''}" data-act="tab2" data-v="upcoming">Upcoming</button></div>${todayTab === 'today' ? `<button class="chip ${UI.group ? 'on' : ''}" data-act="togroup">By room</button>` : ''}</div>`;
   if (todayTab === 'today') {
     const due = [...late, ...now];
-    h += due.length ? due.map(x => row(x)).join('') : `<div class="empty"><div class="art">${svg('done')}</div><p><b>All caught up</b><br>Nothing needs care today.</p></div>`;
+    if (!due.length) h += `<div class="empty"><div class="art">${svg('done')}</div><p><b>All caught up</b><br>Nothing needs care today.</p></div>`;
+    else if (UI.group) {
+      const rooms = {}; due.forEach(x => (rooms[x.p.location || 'No room'] = rooms[x.p.location || 'No room'] || []).push(x));
+      h += Object.entries(rooms).map(([r, g]) => `<div class="roomhead"><b><bdi>${esc(r)}</bdi></b><span class="sub">${g.length}</span><button class="secondary" data-act="doneroom" data-room="${esc(r)}">${svg('check')} All done</button></div>${g.map(x => row(x)).join('')}`).join('');
+    } else h += due.map(x => row(x)).join('');
   } else if (!soon.length) h += `<div class="empty"><div class="art">${svg('sun')}</div><p><b>Nothing coming up</b><br>No care is due in the next 30 days.</p></div>`;
   else {
     const groups = {}; soon.forEach(x => (groups[x.i.due] = groups[x.i.due] || []).push(x));
     h += Object.keys(groups).sort().map(d => { const g = groups[d], w = when(d);
       return `<div class="card"><div class="task-head"><b style="font-size:17px">${w.txt}</b><span class="sub">${shortDate(d)}</span><span class="chip">${g.length === 1 ? '1 task' : g.length + ' tasks'}</span></div><div style="margin-top:8px">${g.map(x => row(x, false)).join('')}</div></div>`; }).join('');
   }
-  return h;
+  return h + tipCard();
 }
 
 function vPlants() {
@@ -339,12 +386,13 @@ function vPlants() {
   if (locFilter && !locs.includes(locFilter)) locFilter = '';
   const list = DB.plants.filter(p => !locFilter || p.location === locFilter);
   let h = `<h1>Plants</h1>`;
+  if (DB.plants.length > 6) h += `<input id="q" class="search" type="search" placeholder="Search plants" aria-label="Search plants">`;
   if (locs.length > 1) h += `<div class="chips"><button class="chip ${locFilter ? '' : 'on'}" data-act="loc" data-v="">All</button>${locs.map(l => `<button class="chip ${locFilter === l ? 'on' : ''}" data-act="loc" data-v="${esc(l)}">${esc(l)}</button>`).join('')}</div>`;
   if (!list.length) h += `<div class="empty"><div class="art">${svg('plant')}</div><p><b>No plants yet</b><br>Tap + to add your first plant.</p></div>`;
   h += `<div class="grid">` + list.map(p => {
     const dues = Object.keys(p.tasks).map(k => info(p, k).due).filter(Boolean).sort();
     const w = dues[0] ? when(dues[0]) : null;
-    return `<button class="pcard" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b><bdi>${esc(p.name)}</bdi></b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
+    return `<button class="pcard" data-s="${esc((p.name + ' ' + SPECIES[p.species].n + ' ' + (p.location || '')).toLowerCase())}" data-act="open" data-p="${p.id}">${thumb(p, 'pic')}<div class="meta"><b><bdi>${esc(p.name)}</bdi></b><span class="sub ${w?.late ? 'late' : ''}">${esc(p.location || SPECIES[p.species].n)}${w ? ' · ' + w.txt : ''}</span></div></button>`;
   }).join('') + `</div><button class="fab" data-act="new" aria-label="Add a plant">+</button>`;
   return h;
 }
@@ -374,8 +422,10 @@ function vPlant() {
         · Last done ${shortDate(p.tasks[k].last)}</div>
       ${k === 'water' && !i.manual && factors(p).length ? `<div class="sub" style="margin-top:2px">Base ${baseRec(p, k)} days${factors(p).map(([l, m]) => ` · ${l} ×${m}`).join('')} → ${i.rec}</div>` : ''}
       ${w ? `<div class="sub ${w.late ? 'late' : ''}" style="margin-top:2px">Next: ${w.txt} (${shortDate(i.due)})</div>` : ''}
+      ${sugHtml(p, k)}
       <div class="task-btns"><button class="secondary" data-act="snooze" data-p="${p.id}" data-k="${k}">${svg('clock')} Snooze</button><button class="primary" style="margin:0;padding:9px" data-act="done" data-p="${p.id}" data-k="${k}">${svg('check')} ${T.d}</button></div></div>`;
   });
+  h += careCard(p);
   const missing = Object.keys(TASKS).filter(k => !p.tasks[k]);
   if (missing.length) h += `<h2>Add a task</h2><div class="chips">${missing.map(k => `<button class="chip" data-act="addtask" data-p="${p.id}" data-k="${k}">${TASKS[k].i} ${TASKS[k].l}</button>`).join('')}</div>`;
   h += `<h2>Notes</h2><textarea class="note" id="notes" data-p="${p.id}" placeholder="e.g. likes bright light, yellowing leaves...">${esc(p.notes || '')}</textarea>`;
@@ -409,8 +459,11 @@ function vForm() {
 
 function vSettings() {
   return `<h1>Settings</h1>
+  ${statsCard()}
   <div class="card"><b>Care log</b><p class="sub">The app records every watering and snooze (${DB.log.length} so far) so the schedule can be improved. After a few weeks, export it and share it for suggestions.</p>
     <button class="secondary" data-act="exportlog" style="width:100%">Export log</button></div>
+  <div class="card"><b>Calendar</b><p class="sub">Download your care schedule for the next 60 days and open the file to add it to your calendar. It's a snapshot, so export again after big changes.</p>
+    <button class="secondary" data-act="exportics" style="width:100%">Export to calendar</button></div>
   <div class="card"><b>My plants</b><p class="sub">Adds your ${MINE.length} plants with their rooms and last-watered dates. Plants already in the app are updated, not duplicated.</p>
     <button class="secondary" data-act="seed" style="width:100%">Import my plants</button></div>
   ${(rooms => rooms.length ? `<div class="card"><b>Rooms</b><p class="sub">Leave everything on "Normal" unless a room is clearly different (a hot sunny room, a humid bathroom, near a heater). It slightly adjusts watering.</p>${rooms.map(r => `<div class="room"><b><bdi>${esc(r)}</bdi></b><select class="room-sel" data-room="${esc(r)}">${Object.entries(CLIM).map(([k, v]) => `<option value="${k}" ${((DB.rooms || {})[r] || {}).c === k || (!((DB.rooms || {})[r] || {}).c && k === 'n') ? 'selected' : ''}>${v[0]}</option>`).join('')}</select></div>`).join('')}</div>` : '')([...new Set(DB.plants.map(p => p.location).filter(Boolean))])}
@@ -441,17 +494,24 @@ function toast(msg, undo) {
 }
 
 /* ---------- actions ---------- */
-function doDone(pid, k) {
-  const p = plant(pid), t = p.tasks[k], i = info(p, k);
-  lastUndo = { pid, k, prev: { ...t }, logLen: DB.log.length };
+function applyDone(pid, k) {
+  const p = plant(pid), t = p.tasks[k], i = info(p, k), prev = { ...t };
   addLog({ type: 'done', pid, plant: p.name, species: p.species, task: k, date: today(), planned: i.base, due: i.due,
     daysLate: i.base ? diff(i.base, today()) : null, interval: i.interval, manual: i.manual, snoozes: t.snoozes || 0 });
-  t.last = today(); t.snoozeUntil = null; t.snoozes = 0;
-  save(); render(); toast(`${p.name}: ${TASKS[k].d}`, true);
+  t.last = today(); t.snoozeUntil = null; t.snoozes = 0; t.dismissed = null;
+  return { pid, k, prev };
+}
+function doDone(pid, k) {
+  const logLen = DB.log.length, u = applyDone(pid, k);
+  lastUndo = { items: [u], logLen }; save(); render(); toast(`${plant(pid).name}: ${TASKS[k].d}`, true);
+}
+function doDoneMany(list) {
+  const logLen = DB.log.length, items = list.map(([pid, k]) => applyDone(pid, k));
+  lastUndo = { items, logLen }; save(); render(); toast(`${items.length} ${items.length === 1 ? 'task' : 'tasks'} done`, true);
 }
 function doSnooze(n) {
   const { pid, k, reason } = sheetCtx, p = plant(pid), t = p.tasks[k], i = info(p, k);
-  lastUndo = { pid, k, prev: { ...t }, logLen: DB.log.length };
+  lastUndo = { items: [{ pid, k, prev: { ...t } }], logLen: DB.log.length };
   t.snoozeUntil = addDays(today(), n); t.snoozes = (t.snoozes || 0) + 1;
   addLog({ type: 'snooze', pid, plant: p.name, species: p.species, task: k, date: today(), planned: i.base, days: n, until: t.snoozeUntil,
     lateSoFar: diff(i.base, t.snoozeUntil), snoozeNo: t.snoozes, interval: i.interval, reason: reason || null });
@@ -459,10 +519,54 @@ function doSnooze(n) {
 }
 function undo() {
   if (!lastUndo) return;
-  const p = plant(lastUndo.pid); if (p) p.tasks[lastUndo.k] = lastUndo.prev;
+  lastUndo.items.forEach(u => { const p = plant(u.pid); if (p) p.tasks[u.k] = u.prev; });
   DB.log.length = lastUndo.logLen; lastUndo = null; save(); $('#toast').hidden = true; render();
 }
-
+// care patterns learned from the user's own log
+function gaps(pid, k) {
+  const ds = [...new Set(DB.log.filter(e => e.type === 'done' && e.pid === pid && e.task === k).map(e => e.date))].sort(), g = [];
+  for (let i = 1; i < ds.length; i++) { const d = diff(ds[i - 1], ds[i]); if (d > 0) g.push(d); }
+  return g.slice(-5);
+}
+const median = a => { const x = [...a].sort((m, n) => m - n), h = x.length >> 1; return x.length % 2 ? x[h] : Math.round((x[h - 1] + x[h]) / 2); };
+function suggestion(p, k) {
+  const t = p.tasks[k], g = gaps(p.id, k); if (g.length < 3) return null;
+  const m = median(g), cur = info(p, k).interval;
+  if (!cur || Math.abs(m - cur) < 2 || Math.abs(m - cur) / cur < .2 || t.dismissed === m) return null;
+  return { m, cur, n: g.length + 1 };
+}
+const sugHtml = (p, k) => { const g = suggestion(p, k); return g ? `<div class="tip"><b>Your pattern</b><br>Your last ${g.n} ${TASKS[k].l.toLowerCase()} sessions were about every ${g.m} days, but the schedule says every ${g.cur}.
+  <div class="btnrow"><button class="secondary" data-act="usesug" data-p="${p.id}" data-k="${k}" data-m="${g.m}">Use ${g.m} days</button><button class="secondary" data-act="nosug" data-p="${p.id}" data-k="${k}" data-m="${g.m}">Keep ${g.cur}</button></div></div>` : ''; };
+function statsCard() {
+  const since = addDays(today(), -30), done = DB.log.filter(e => e.type === 'done' && e.date >= since), snz = DB.log.filter(e => e.type === 'snooze' && e.date >= since).length;
+  const onTime = done.filter(e => e.daysLate == null || e.daysLate <= 1).length;
+  return `<div class="card"><b>Your care, last 30 days</b>${done.length ? `<div class="stat"><div><b>${done.length}</b><small>tasks done</small></div><div><b>${Math.round(onTime / done.length * 100)}%</b><small>on time</small></div><div><b>${snz}</b><small>snoozes</small></div></div>`
+    : '<p class="sub">Nothing logged yet. Mark a task done and your stats show up here.</p>'}</div>`;
+}
+const TIPS = {
+  spring: 'Spring is growth season: plants drink more and can be fertilized again from March. A good moment to repot.',
+  summer: 'Heat dries pots fast. Check the soil with a finger before watering, and keep sun-sensitive plants away from hot windows.',
+  autumn: 'Days are getting shorter. Water a little less often, and plan to stop fertilizing in December.',
+  winter: 'Growth slows down. Water less, skip fertilizer until March, and keep plants away from heaters and cold drafts.'
+};
+const tipCard = () => `<div class="card" style="margin-top:18px"><b>${SEASONS[season()]} tip</b><p class="sub" style="margin:4px 0 0;font-size:14px">${TIPS[season()]}</p></div>`;
+function backupNudge() {
+  const m = DB.meta || {}; if (m.nudgeUntil && m.nudgeUntil > today()) return '';
+  const age = diff(m.lastBackup || m.firstUse || today(), today()); if (age < (m.lastBackup ? 30 : 7)) return '';
+  return `<div class="card nudge"><b>Back up your plants</b><p class="sub" style="margin:4px 0 10px">${m.lastBackup ? `Your last backup was ${age} days ago.` : 'You haven\'t made a backup yet.'} Your data lives only on this phone.</p>
+    <div class="btnrow"><button class="secondary" data-act="exportall">Export backup</button><button class="secondary" data-act="nudgelater">Later</button></div></div>`;
+}
+function icsText() {
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//My Plants//EN', 'CALSCALE:GREGORIAN'], stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  DB.plants.forEach(p => Object.keys(p.tasks).forEach(k => {
+    const i = info(p, k); if (!i.due) return;
+    const d = i.due < today() ? today() : i.due; if (diff(today(), d) > 60) return;
+    const ds = d.replace(/-/g, ''), de = addDays(d, 1).replace(/-/g, '');
+    L.push('BEGIN:VEVENT', `UID:${p.id}-${k}-${ds}@myplants`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${ds}`, `DTEND;VALUE=DATE:${de}`,
+      `SUMMARY:${TASKS[k].l}: ${p.name.replace(/[\\,;]/g, ' ')}`, `DESCRIPTION:${(p.location || '').replace(/[\\,;]/g, ' ')}`, 'END:VEVENT');
+  }));
+  L.push('END:VCALENDAR'); return L.join('\r\n');
+}
 const readOpts = () => ({ pot: $('#f-pot').value, light: $('#f-light').value, mat: $('#f-mat').value, soil: $('#f-soil').value, drain: $('#f-drain').checked });
 const MINE = [
   ['Alocasia zabarina', 'alocasia', 'Kitchen', 5], ["Amazonian Elephant's Ear 'Polly' (1)", 'alocasia', 'Kitchen', 9], ["Amazonian Elephant's Ear 'Polly' (2)", 'alocasia', 'Kitchen', 3],
@@ -501,15 +605,15 @@ function resizePhoto(file) {
     img.onerror = () => res(null); img.src = url;
   });
 }
-async function shareJSON(name, obj) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
-  const file = new File([blob], name, { type: 'application/json' });
+async function shareFile(name, text, type) {
+  const blob = new Blob([text], { type }), file = new File([blob], name, { type });
   if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: name }); return; } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.share({ files: [file], title: name }); return true; } catch (e) { if (e.name === 'AbortError') return false; }
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1e4);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1e4); return true;
 }
+const shareJSON = (name, obj) => shareFile(name, JSON.stringify(obj, null, 2), 'application/json');
 
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
@@ -604,10 +708,26 @@ document.addEventListener('click', async e => {
       location.reload();
     })();
   }
-  else if (a === 'exportall') shareJSON(`plants-backup-${today()}.json`, DB);
+  else if (a === 'exportall') { if (await shareJSON(`plants-backup-${today()}.json`, DB)) { DB.meta.lastBackup = today(); save(); render(); } }
+  else if (a === 'nudgelater') { DB.meta.nudgeUntil = addDays(today(), 7); save(); render(); }
+  else if (a === 'exportics') shareFile(`plants-care-${today()}.ics`, icsText(), 'text/calendar');
+  else if (a === 'togroup') { UI.group = !UI.group; saveUI(); render(); }
+  else if (a === 'doneroom') {
+    const list = []; DB.plants.forEach(p => { if ((p.location || 'No room') === d.room) Object.keys(p.tasks).forEach(k => { const i = info(p, k); if (i.due && i.due <= today()) list.push([p.id, k]); }); });
+    if (list.length) doDoneMany(list);
+  }
+  else if (a === 'usesug' || a === 'nosug') {
+    const p = plant(d.p), t = p.tasks[d.k], m = +d.m, from = info(p, d.k).interval;
+    if (a === 'usesug') { t.manual = m; t.dismissed = null; addLog({ type: 'interval', pid: p.id, plant: p.name, species: p.species, task: d.k, date: today(), from, to: m, rec: recInterval(p, d.k), via: 'suggestion' }); }
+    else t.dismissed = m;
+    save(); render();
+  }
   else if (a === 'importall') $('#importfile').click();
 });
 
+document.addEventListener('input', e => {
+  if (e.target.id === 'q') { const v = e.target.value.toLowerCase().trim(); document.querySelectorAll('.pcard').forEach(c => { c.hidden = !!v && !c.dataset.s.includes(v); }); }
+});
 document.addEventListener('change', async e => {
   const el = e.target;
   if (el.classList.contains('room-sel')) {
@@ -623,7 +743,7 @@ document.addEventListener('change', async e => {
     try {
       const data = JSON.parse(await el.files[0].text());
       if (!Array.isArray(data.plants) || !Array.isArray(data.log)) throw 0;
-      if (await ask({ title: 'Restore this backup?', body: 'It replaces everything currently in the app.', ok: 'Restore', cancel: 'Keep current data', danger: true })) { DB = data; save(); go({ name: 'today' }); }
+      if (await ask({ title: 'Restore this backup?', body: 'It replaces everything currently in the app.', ok: 'Restore', cancel: 'Keep current data', danger: true })) { DB = data; normalizeDB(); save(); go({ name: 'today' }); }
     } catch (x) { notice('Couldn\'t restore', 'That file isn\'t a backup from this app.'); }
     el.value = '';
   }
