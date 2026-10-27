@@ -127,7 +127,8 @@ const days = n => n === 1 ? '1 day' : `${n} days`;
 /* ---------- domain ---------- */
 const S = (a, b, c, d) => ({ spring: a, summer: b, autumn: c, winter: d });
 const SEASONS = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
-const season = () => { const m = new Date().getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 8 ? 'summer' : m >= 9 && m <= 10 ? 'autumn' : 'winter'; };
+const seasonOfDate = d => { const m = parse(d).getMonth(); return m >= 2 && m <= 4 ? 'spring' : m >= 5 && m <= 8 ? 'summer' : m >= 9 && m <= 10 ? 'autumn' : 'winter'; };
+const season = () => seasonOfDate(today());
 
 // days between waterings, per season (general starting defaults)
 const SPECIES = {
@@ -166,20 +167,35 @@ const REASONS = ['Soil still moist', 'Was away', 'Other'];
 const LOCATIONS = ['Living Room', 'Kitchen', 'Bedroom', 'Balcony', 'Office', 'Bathroom', 'Storage'];
 
 // watering adjustments by pot / light / material / warm spot. Starting values, to be calibrated from the log.
-const POT = { s: ['Small', .8], m: ['Medium', 1], l: ['Large', 1.25] };
-const LIGHT = { b: ['Bright', .85], m: ['Medium', 1], d: ['Low', 1.35] };
-const MAT = { p: ['Plastic / ceramic', 1], t: ['Terracotta', .75] };
-const HOT = .85;
-const optsOf = p => ({ pot: 'm', light: 'm', mat: 'p', hot: false, ...(p.opts || {}) });
-const waterMult = p => { const o = optsOf(p); return Math.min(1.6, Math.max(.6, POT[o.pot][1] * LIGHT[o.light][1] * MAT[o.mat][1] * (o.hot ? HOT : 1))); };
+const POT = { s: ['Small (under 12 cm)', .8, 'Small'], m: ['Medium (12–20 cm)', 1, 'Medium'], l: ['Large (over 20 cm)', 1.25, 'Large'] };
+const LIGHT = { b: ['Full sun', .8], m: ['Partial sun', 1], d: ['Low light', 1.35] };
+const MAT = { p: ['Plastic', 1], g: ['Glazed ceramic', 1], c: ['Concrete', .85], t: ['Terracotta (unglazed clay)', .75, 'Terracotta'], f: ['Fabric / grow bag', .7, 'Fabric'] };
+const SOIL = { s: ['Standard potting mix', 1], r: ['Moisture-retentive (peat / coco)', 1.2, 'Moisture-retentive soil'], f: ['Fast-draining (cactus mix / perlite / pumice)', .8, 'Fast-draining soil'] };
+const NODRAIN = 1.3, HOT = .85;
+const nm = (m, k) => m[k][2] || m[k][0];
+const optsOf = p => ({ pot: 'm', light: 'm', mat: 'p', soil: 's', drain: true, hot: false, ...(p.opts || {}) });
+// every factor that changes the watering interval, as [label, multiplier]
+function factors(p) {
+  const o = optsOf(p);
+  return [[`${nm(POT, o.pot)} pot`, POT[o.pot][1]], [LIGHT[o.light][0], LIGHT[o.light][1]], [`${nm(MAT, o.mat)} pot`, MAT[o.mat][1]],
+    [nm(SOIL, o.soil), SOIL[o.soil][1]], ['No drainage holes', o.drain ? 1 : NODRAIN], ['Hot or dry spot', o.hot ? HOT : 1]].filter(f => f[1] !== 1);
+}
+const waterMult = p => Math.min(2, Math.max(.5, factors(p).reduce((m, f) => m * f[1], 1)));
 const baseRec = (p, k) => k === 'water' ? (SPECIES[p.species] || SPECIES.other).water[season()] : TASKS[k].rec[season()];
 const recInterval = (p, k) => { const b = baseRec(p, k); return k === 'water' ? Math.max(1, Math.round(b * waterMult(p))) : b; };
 
 // effective interval: manual if set, otherwise the seasonal recommendation. Snoozing only moves the current due date.
+// no fertilizing in winter: push to the start of spring, and never earlier than spring after a skipped winter
+function fertAdjust(last, b) {
+  if (seasonOfDate(b) === 'winter') { const x = parse(b); return `${x.getMonth() === 11 ? x.getFullYear() + 1 : x.getFullYear()}-03-01`; }
+  const ms = `${parse(today()).getFullYear()}-03-01`;
+  return last < ms && ms <= today() && b < ms ? ms : b;
+}
 function info(p, k) {
   const t = p.tasks[k], rec = recInterval(p, k), interval = t.manual || rec;
   if (!interval) return { interval: 0, rec, base: null, due: null, manual: !!t.manual };
-  const base = addDays(t.last, interval);
+  let base = addDays(t.last, interval);
+  if (k === 'fertilize') base = fertAdjust(t.last, base);
   const due = t.snoozeUntil && t.snoozeUntil > base ? t.snoozeUntil : base;
   return { interval, rec, base, due, manual: !!t.manual };
 }
@@ -192,7 +208,7 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-10-27.d';
+const VERSION = '2026-10-27.e';
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -282,13 +298,14 @@ function vPlant() {
   let h = `<div class="topbar"><button class="icon-btn" data-act="back" aria-label="Back">←</button><h1><bdi>${esc(p.name)}</bdi></h1><button class="icon-btn" data-act="edit" data-p="${p.id}" aria-label="Edit">✏️</button></div>`;
   h += p.photo ? `<img class="hero" src="${p.photo}" alt="">` : `<div class="hero">${sp.e}</div>`;
   h += `<div class="sub">${esc(sp.n)}${p.location ? ' · ' + esc(p.location) : ''}</div>
-    <div class="sub">${POT[optsOf(p).pot][0]} pot · ${LIGHT[optsOf(p).light][0]} light · ${optsOf(p).mat === 't' ? 'Terracotta' : 'Plastic / ceramic'}${optsOf(p).hot ? ' · Warm spot' : ''}</div>`;
+    <div class="sub">${(o => `${nm(POT, o.pot)} pot · ${LIGHT[o.light][0]} · ${nm(MAT, o.mat)} pot · ${nm(SOIL, o.soil)} · ${o.drain ? 'Drainage holes' : 'No drainage holes'}${o.hot ? ' · Hot or dry spot' : ''}`)(optsOf(p))}</div>`;
   Object.keys(p.tasks).forEach(k => {
     const i = info(p, k), T = TASKS[k], w = i.due ? when(i.due) : null;
     h += `<div class="card" style="margin-top:12px"><div class="task-head"><span style="font-size:22px">${T.i}</span><b>${T.l}</b>
       <button class="secondary" data-act="freq" data-p="${p.id}" data-k="${k}">${i.interval ? 'Every ' + days(i.interval) : 'Paused'} ✎</button></div>
-      <div class="sub" style="margin-top:6px">${i.interval ? (i.manual ? 'Manual frequency' : `Recommended for ${SEASONS[season()].toLowerCase()}${k === 'water' && waterMult(p) !== 1 ? ` (base ${baseRec(p, k)}, adjusted for pot and light)` : ''}`) : `No recommendation for ${SEASONS[season()].toLowerCase()}`}
+      <div class="sub" style="margin-top:6px">${i.interval ? (i.manual ? 'Manual frequency' : `Recommended for ${SEASONS[season()].toLowerCase()}`) : (k === 'fertilize' && season() === 'winter' ? 'No fertilizing in winter (resumes in spring)' : `No recommendation for ${SEASONS[season()].toLowerCase()}`)}
         · Last done ${shortDate(p.tasks[k].last)}</div>
+      ${k === 'water' && !i.manual && factors(p).length ? `<div class="sub" style="margin-top:2px">Base ${baseRec(p, k)} days${factors(p).map(([l, m]) => ` · ${l} ×${m}`).join('')} → ${i.rec}</div>` : ''}
       ${w ? `<div class="sub ${w.late ? 'late' : ''}" style="margin-top:2px">Next: ${w.txt} (${shortDate(i.due)})</div>` : ''}
       <div class="task-btns"><button class="secondary" data-act="snooze" data-p="${p.id}" data-k="${k}">⏰ Snooze</button><button class="primary" style="margin:0;padding:9px" data-act="done" data-p="${p.id}" data-k="${k}">✓ ${T.d}</button></div></div>`;
   });
@@ -311,10 +328,12 @@ function vForm() {
   <label>Name<input id="f-name" value="${esc(p?.name || '')}" placeholder="e.g. Living room pothos"></label>
   <label>Plant type<select id="f-species">${Object.entries(SPECIES).map(([k, v]) => `<option value="${k}" ${k === sel ? 'selected' : ''}>${v.e} ${v.n}</option>`).join('')}</select></label>
   <label>Location<input id="f-loc" list="locs" value="${esc(p?.location || '')}" placeholder="Living Room, Kitchen..."><datalist id="locs">${locs.map(l => `<option value="${esc(l)}">`).join('')}</datalist></label>
-  <div class="card" style="margin-top:12px"><b>Watering adjustments</b><div class="sub">Affects the recommended frequency</div>
+  <div class="card" style="margin-top:12px"><b>Pot &amp; growing conditions</b><div class="sub">All of these adjust the recommended watering frequency</div>
+    <label>Sun<select id="f-light">${opt(LIGHT, o.light)}</select></label>
     <label>Pot size<select id="f-pot">${opt(POT, o.pot)}</select></label>
-    <label>Light<select id="f-light">${opt(LIGHT, o.light)}</select></label>
     <label>Pot material<select id="f-mat">${opt(MAT, o.mat)}</select></label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="f-drain" style="width:auto" ${o.drain ? 'checked' : ''}>Pot has drainage holes</label>
+    <label>Soil<select id="f-soil">${opt(SOIL, o.soil)}</select></label>
     <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="f-hot" style="width:auto" ${o.hot ? 'checked' : ''}>Hot or dry spot (near AC or heating)</label></div>
   ${p ? '' : `<label>Last watered<input type="date" id="f-last" value="${today()}" max="${today()}"></label>`}
   <button class="primary" data-act="saveplant">Save</button>
@@ -366,7 +385,7 @@ function undo() {
   DB.log.length = lastUndo.logLen; lastUndo = null; save(); $('#toast').hidden = true; render();
 }
 
-const readOpts = () => ({ pot: $('#f-pot').value, light: $('#f-light').value, mat: $('#f-mat').value, hot: $('#f-hot').checked });
+const readOpts = () => ({ pot: $('#f-pot').value, light: $('#f-light').value, mat: $('#f-mat').value, soil: $('#f-soil').value, drain: $('#f-drain').checked, hot: $('#f-hot').checked });
 const MINE = [
   ['Alocasia zabarina', 'alocasia', 'Kitchen', 5], ["Amazonian Elephant's Ear 'Polly' (1)", 'alocasia', 'Kitchen', 9], ["Amazonian Elephant's Ear 'Polly' (2)", 'alocasia', 'Kitchen', 3],
   ['Arrowhead', 'arrowhead', 'Kitchen', 9], ["Arrowhead 'Pink Allusion'", 'arrowhead', 'Kitchen', 5], ['Golden Pothos', 'pothos', 'Bedroom', 9],
