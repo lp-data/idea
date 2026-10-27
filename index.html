@@ -87,6 +87,7 @@ nav button.on{color:var(--green)}
 #toast[hidden]{display:none}
 #toast button{color:#8fe3b0;font-weight:700}
 .note{width:100%;min-height:80px}
+.build{text-align:center;font-size:12px;color:var(--muted);margin:28px 0 4px}
 .room{display:flex;align-items:center;gap:8px;margin-top:8px}.room b{flex:1}.room input{width:76px;padding:8px}
 .tiles{display:flex;gap:8px;margin:8px 0 12px}
 .tile{flex:1;display:flex;align-items:center;gap:10px;border-radius:16px;padding:12px;text-align:start}
@@ -221,7 +222,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-10-27.f';
+const VERSION = '2026-10-27.g';
+const BUILD = '27/10/2026 23:30'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -248,7 +250,7 @@ function render() {
   $('#nav').hidden = !top;
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view.name));
   const fn = { today: vToday, plants: vPlants, settings: vSettings, plant: vPlant, form: vForm }[view.name];
-  $('#app').innerHTML = fn();
+  $('#app').innerHTML = fn() + (top ? `<div class="build">Last updated ${BUILD} (Israel time) · v${VERSION}</div>` : '');
 }
 const thumb = (p, cls = 'thumb') => p.photo ? `<img class="${cls}" src="${p.photo}" alt="">` : `<span class="${cls}">${(SPECIES[p.species] || SPECIES.other).e}</span>`;
 
