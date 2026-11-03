@@ -128,6 +128,8 @@ nav button.on{color:var(--green-d);background:var(--green-soft)}
 .search{margin-bottom:12px}
 .nudge{border:1px solid var(--line)}
 .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.stat div{background:var(--green-soft);border-radius:14px;padding:10px 8px;text-align:center}.stat b{display:block;font:600 22px var(--font-d);color:var(--green-d)}.stat small{font-size:12px;color:var(--muted)}
+[data-act="done"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.hint{text-align:center;margin:14px 0 0}
 .enter>*{animation:rise .42s var(--ease) both}
 .enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(4){animation-delay:.12s}.enter>*:nth-child(n+5){animation-delay:.16s}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -310,8 +312,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-10-28.b';
-const BUILD = '27/10/2026 23:45'; // update on every deploy
+const VERSION = '2026-11-03.a';
+const BUILD = '03/11/2026 09:56'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -333,6 +335,7 @@ const saveUI = () => { try { localStorage.setItem('plants_ui', JSON.stringify(UI
 
 /* ---------- state / render ---------- */
 let view = { name: 'today' };
+let lpTimer = null, lpFired = false, lpSheetAt = 0, lpPos = null;
 let todayTab = 'today', sheetCtx = null, formPhoto = null, lastUndo = null, toastTimer = null, locFilter = '';
 
 let enter = false;
@@ -372,6 +375,7 @@ function vToday() {
       const rooms = {}; due.forEach(x => (rooms[x.p.location || 'No room'] = rooms[x.p.location || 'No room'] || []).push(x));
       h += Object.entries(rooms).map(([r, g]) => `<div class="roomhead"><b><bdi>${esc(r)}</bdi></b><span class="sub">${g.length}</span><button class="secondary" data-act="doneroom" data-room="${esc(r)}">${svg('check')} All done</button></div>${g.map(x => row(x)).join('')}`).join('');
     } else h += due.map(x => row(x)).join('');
+    if (due.length && !UI.hintDone) h += `<p class="sub hint">Tip: press and hold ${svg('check')} to log care from an earlier day.</p>`;
   } else if (!soon.length) h += `<div class="empty"><div class="art">${svg('sun')}</div><p><b>Nothing coming up</b><br>No care is due in the next 30 days.</p></div>`;
   else {
     const groups = {}; soon.forEach(x => (groups[x.i.due] = groups[x.i.due] || []).push(x));
@@ -494,16 +498,27 @@ function toast(msg, undo) {
 }
 
 /* ---------- actions ---------- */
-function applyDone(pid, k) {
+function applyDone(pid, k, on = today()) { // `on` = the day the care actually happened
   const p = plant(pid), t = p.tasks[k], i = info(p, k), prev = { ...t };
-  addLog({ type: 'done', pid, plant: p.name, species: p.species, task: k, date: today(), planned: i.base, due: i.due,
-    daysLate: i.base ? diff(i.base, today()) : null, interval: i.interval, manual: i.manual, snoozes: t.snoozes || 0 });
-  t.last = today(); t.snoozeUntil = null; t.snoozes = 0; t.dismissed = null;
+  addLog({ type: 'done', pid, plant: p.name, species: p.species, task: k, date: on, planned: i.base, due: i.due,
+    daysLate: i.base ? diff(i.base, on) : null, interval: i.interval, manual: i.manual, snoozes: t.snoozes || 0, ...(on !== today() ? { loggedOn: today() } : {}) });
+  t.last = on; t.snoozeUntil = null; t.snoozes = 0; t.dismissed = null;
   return { pid, k, prev };
 }
-function doDone(pid, k) {
-  const logLen = DB.log.length, u = applyDone(pid, k);
-  lastUndo = { items: [u], logLen }; save(); render(); toast(`${plant(pid).name}: ${TASKS[k].d}`, true);
+function doDone(pid, k, on = today()) {
+  const logLen = DB.log.length, u = applyDone(pid, k, on);
+  lastUndo = { items: [u], logLen }; save(); render();
+  toast(`${plant(pid).name}: ${TASKS[k].d}${on !== today() ? ' on ' + shortDate(on) : ''}`, true);
+}
+// press and hold ✓: pick the day the care really happened
+function openDoneWhen(pid, k) {
+  const p = plant(pid); if (!p) return; const last = p.tasks[k].last;
+  sheetCtx = { pid, k }; lpSheetAt = Date.now(); UI.hintDone = true; saveUI();
+  const chips = [[1, 'Yesterday'], [2, '2 days ago'], [3, '3 days ago'], [7, 'A week ago']].filter(([n]) => addDays(today(), -n) >= last);
+  openSheet(`<h3>When was it done?</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · ${TASKS[k].l} · last logged ${shortDate(last)}</div>
+    ${chips.length ? `<div class="chips" style="margin-top:14px">${chips.map(([n, l]) => `<button class="chip" data-act="donewhen" data-n="${n}">${l}</button>`).join('')}</div>` : ''}
+    <label>Pick a date<input type="date" id="when-d" min="${last}" max="${today()}" value="${today()}"></label>
+    <button class="primary" style="margin-top:6px" data-act="donewhen" data-n="custom">${svg('check')} Log it</button>`);
 }
 function doDoneMany(list) {
   const logLen = DB.log.length, items = list.map(([pid, k]) => applyDone(pid, k));
@@ -615,7 +630,16 @@ async function shareFile(name, text, type) {
 }
 const shareJSON = (name, obj) => shareFile(name, JSON.stringify(obj, null, 2), 'application/json');
 
+document.addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-act="done"]'); lpFired = false; clearTimeout(lpTimer); if (!b) return;
+  lpPos = [e.clientX, e.clientY];
+  lpTimer = setTimeout(() => { lpFired = true; navigator.vibrate?.(12); openDoneWhen(b.dataset.p, b.dataset.k); }, 480);
+});
+document.addEventListener('pointermove', e => { if (lpPos && Math.hypot(e.clientX - lpPos[0], e.clientY - lpPos[1]) > 10) clearTimeout(lpTimer); });
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => { clearTimeout(lpTimer); lpPos = null; }));
+document.addEventListener('contextmenu', e => { if (e.target.closest('[data-act="done"]')) e.preventDefault(); });
 document.addEventListener('click', async e => {
+  if (lpFired && e.target.closest('[data-act="done"]')) { lpFired = false; return; }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const d = el.dataset, a = d.act;
   if (a === 'tab') go({ name: d.v });
@@ -635,7 +659,13 @@ document.addEventListener('click', async e => {
   }
   else if (a === 'reason') { sheetCtx.reason = sheetCtx.reason === d.v ? null : d.v; document.querySelectorAll('.panel .chip').forEach(c => c.classList.toggle('on', c.dataset.v === sheetCtx.reason)); }
   else if (a === 'snoozego') { const n = d.n === 'custom' ? parseInt($('#custom-n').value, 10) : +d.n; if (n >= 1 && n <= 90) doSnooze(n); }
-  else if (a === 'closesheet' || a === 'askno') closeSheet();
+  else if (a === 'closesheet' || a === 'askno') { if (a === 'closesheet' && Date.now() - lpSheetAt < 500) return; closeSheet(); }
+  else if (a === 'donewhen') {
+    const { pid, k } = sheetCtx, p = plant(pid), last = p.tasks[k].last;
+    const on = d.n === 'custom' ? $('#when-d').value : addDays(today(), -d.n);
+    if (!on || on > today() || on < last) { $('#when-d')?.focus(); return; }
+    closeSheet(); doDone(pid, k, on);
+  }
   else if (a === 'askyes') { const r = askResolve; askResolve = null; closeSheet(); r && r(true); }
   else if (a === 'undo') undo();
   else if (a === 'freq') {
