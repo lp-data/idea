@@ -130,6 +130,7 @@ nav button.on{color:var(--green-d);background:var(--green-soft)}
 .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}.stat div{background:var(--green-soft);border-radius:14px;padding:10px 8px;text-align:center}.stat b{display:block;font:600 22px var(--font-d);color:var(--green-d)}.stat small{font-size:12px;color:var(--muted)}
 [data-act="done"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 .hint{text-align:center;margin:14px 0 0}
+.row.done{opacity:.78;box-shadow:none;border:1px dashed var(--line);background:transparent}.row.done .thumb{filter:saturate(.6)}.row.done .secondary{padding:8px 12px;font-size:14px}
 .enter>*{animation:rise .42s var(--ease) both}
 .enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(4){animation-delay:.12s}.enter>*:nth-child(n+5){animation-delay:.16s}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -315,8 +316,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-11-05.a';
-const BUILD = '05/11/2026 02:52'; // update on every deploy
+const VERSION = '2026-11-07.a';
+const BUILD = '07/11/2026 20:24'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -380,6 +381,7 @@ function vToday() {
       h += Object.entries(rooms).map(([r, g]) => `<div class="roomhead"><b><bdi>${esc(r)}</bdi></b><span class="sub">${g.length}</span><button class="secondary" data-act="doneroom" data-room="${esc(r)}">${svg('check')} All done</button></div>${g.map(x => row(x)).join('')}`).join('');
     } else h += due.map(x => row(x)).join('');
     if (due.length && !UI.hintDone) h += `<p class="sub hint">Tip: press and hold ${svg('check')} to log care from an earlier day.</p>`;
+    h += doneSection();
   } else if (!soon.length) h += `<div class="empty"><div class="art">${svg('sun')}</div><p><b>Nothing coming up</b><br>No care is due in the next 30 days.</p></div>`;
   else {
     const groups = {}; soon.forEach(x => (groups[x.i.due] = groups[x.i.due] || []).push(x));
@@ -507,7 +509,7 @@ function toast(msg, undo) {
 function applyDone(pid, k, on = today()) { // `on` = the day the care actually happened
   const p = plant(pid), t = p.tasks[k], i = info(p, k), prev = { ...t };
   addLog({ type: 'done', pid, plant: p.name, species: p.species, task: k, date: on, planned: i.base, due: i.due,
-    daysLate: i.base ? diff(i.base, on) : null, interval: i.interval, manual: i.manual, snoozes: t.snoozes || 0, ...(on !== today() ? { loggedOn: today() } : {}) });
+    daysLate: i.base ? diff(i.base, on) : null, interval: i.interval, manual: i.manual, snoozes: t.snoozes || 0, prevLast: prev.last, prevSnoozeUntil: prev.snoozeUntil || null, prevSnoozes: prev.snoozes || 0, ...(on !== today() ? { loggedOn: today() } : {}) });
   t.last = on; t.snoozeUntil = null; t.snoozes = 0; t.dismissed = null;
   return { pid, k, prev };
 }
@@ -599,6 +601,18 @@ const TIPS = {
   winter: 'Growth slows down. Water less, skip fertilizer until March, and keep plants away from heaters and cold drafts.'
 };
 const tipCard = () => `<div class="card" style="margin-top:18px"><b>${SEASONS[season()]} tip</b><p class="sub" style="margin:4px 0 0;font-size:14px">${TIPS[season()]}</p></div>`;
+// everything completed today, newest first, so the user can see what is already handled
+function doneSection() {
+  const seen = new Set(), rows = [];
+  for (let i = DB.log.length - 1; i >= 0; i--) {
+    const e = DB.log[i]; if (e.type !== 'done' || fmt(new Date(e.t)) !== today()) continue;
+    const key = e.pid + e.task, p = plant(e.pid); if (seen.has(key) || !p || !p.tasks[e.task] || !TASKS[e.task]) continue; seen.add(key);
+    rows.push(`<div class="row done"><button class="info-btn" data-act="open" data-p="${p.id}" style="display:contents">${thumb(p)}
+      <div class="info"><b><bdi>${esc(p.name)}</bdi></b><span class="sub">${svg('check')} ${TASKS[e.task].d}${e.date !== today() ? ' on ' + shortDate(e.date) : ' today'}</span></div></button>
+      ${e.prevLast ? `<button class="secondary" data-act="undorow" data-i="${i}">Undo</button>` : ''}</div>`);
+  }
+  return rows.length ? `<h2>Done today · ${rows.length}</h2>${rows.join('')}` : '';
+}
 function backupNudge() {
   const m = DB.meta || {}; if (m.nudgeUntil && m.nudgeUntil > today()) return '';
   const age = diff(m.lastBackup || m.firstUse || today(), today()); if (age < (m.lastBackup ? 30 : 7)) return '';
@@ -776,6 +790,10 @@ document.addEventListener('click', async e => {
   else if (a === 'houseyes') { const from = houseMult(), f = +d.f; DB.meta.house = f; addLog({ type: 'house', from, to: f, n: +d.n, date: today() }); save(); render(); toast(`Watering schedules stretched ×${f}`, false); }
   else if (a === 'houseno') { DB.meta.houseNo = { until: addDays(today(), 14), f: +d.f }; save(); render(); }
   else if (a === 'housereset') { addLog({ type: 'house', from: houseMult(), to: 1, date: today() }); DB.meta.house = 1; save(); render(); }
+  else if (a === 'undorow') {
+    const e = DB.log[+d.i], p = e && e.type === 'done' && plant(e.pid), t = p && p.tasks[e.task];
+    if (t && e.prevLast) { t.last = e.prevLast; t.snoozeUntil = e.prevSnoozeUntil || null; t.snoozes = e.prevSnoozes || 0; DB.log.splice(+d.i, 1); lastUndo = null; save(); render(); toast(`${p.name}: back to due`, false); }
+  }
   else if (a === 'moist2') { sheetCtx.reason = MOIST; doSnooze(2); }
   else if (a === 'exportall') { if (await shareJSON(`plants-backup-${today()}.json`, DB)) { DB.meta.lastBackup = today(); save(); render(); } }
   else if (a === 'nudgelater') { DB.meta.nudgeUntil = addDays(today(), 7); save(); render(); }
