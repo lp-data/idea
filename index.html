@@ -131,6 +131,7 @@ nav button.on{color:var(--green-d);background:var(--green-soft)}
 [data-act="done"]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 .hint{text-align:center;margin:14px 0 0}
 .row.done{opacity:.78;box-shadow:none;border:1px dashed var(--line);background:transparent}.row.done .thumb{filter:saturate(.6)}.row.done .secondary{padding:8px 12px;font-size:14px}
+.chk{display:flex;align-items:center;gap:12px;margin:0;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px;color:var(--text);font-weight:500}.chk input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--green)}.chk small{display:block;color:var(--muted);font-size:13px;font-weight:400}.rev{max-height:52vh;overflow:auto;margin:8px 0}
 .enter>*{animation:rise .42s var(--ease) both}
 .enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(4){animation-delay:.12s}.enter>*:nth-child(n+5){animation-delay:.16s}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -316,8 +317,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-11-07.a';
-const BUILD = '07/11/2026 20:24'; // update on every deploy
+const VERSION = '2026-11-12.a';
+const BUILD = '12/11/2026 22:13'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -368,6 +369,7 @@ function vToday() {
   if (!DB.plants.length) return h + `<div class="empty"><div class="art">${svg('plant')}</div><p><b>No plants yet</b><br>Add your first plant to start tracking its watering and care.</p><button class="secondary" data-act="new">Add a plant</button><br><br><button class="secondary" data-act="seed">Import my plants (${MINE.length})</button></div>`;
   const byTask = {}; now.forEach(x => byTask[x.k] = (byTask[x.k] || 0) + 1);
   const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'Nothing';
+  h += reviewCard();
   h += houseCard();
   h += backupNudge();
   h += `<div class="tiles"><div class="tile ok-t">${svg('check')}<div><small>Due today</small><b>${todayTxt}</b></div></div>
@@ -562,8 +564,25 @@ function houseSuggestion() {
   const f = Math.min(2.5, Math.max(.7, 1 + (m - 1) * r.length / (r.length + 6)));
   return { f: Math.round(f * 10) / 10, n: r.length, cur: houseMult() };
 }
+// Per-plant schedule estimate from the user's own log: what the cycles really lasted
+// (median of the last completed watering gaps, or how long the soil was still moist, whichever is longer).
+function estimateInterval(p) {
+  const t = p.tasks.water; if (!t) return null;
+  const ev = waterEvents(p.id), done = ev.filter(e => e.type === 'done').map(obsDays).filter(d => d > 0).slice(-3);
+  const lbs = ev.filter(e => e.type === 'snooze' && e.date >= t.last).map(obsDays);
+  const lb = lbs.length ? Math.max(...lbs) : 0, est = Math.max(done.length ? median(done) : 0, lb), cur = info(p, 'water').interval;
+  if (!est || !cur) return null;
+  const up = est >= cur * 1.3 && est - cur >= 3, down = !lb && done.length >= 2 && est <= cur * .7 && cur - est >= 3;
+  return up || down ? { id: p.id, name: p.name, from: cur, to: est } : null;
+}
+const reviewList = () => DB.plants.map(estimateInterval).filter(x => x && plant(x.id).tasks.water.dismissed !== x.to);
+function reviewCard() {
+  const l = reviewList(), no = (DB.meta || {}).reviewNo; if (l.length < 3 || (no && no.until > today())) return '';
+  return `<div class="card nudge"><b>Better schedules for ${l.length} plants</b><p class="sub" style="margin:4px 0 10px">Based on when you watered and how long the soil stayed moist. Review them and apply in one go.</p>
+    <div class="btnrow"><button class="secondary" data-act="review">Review</button><button class="secondary" data-act="reviewno">Not now</button></div></div>`;
+}
 function houseCard() {
-  const g = houseSuggestion(), no = (DB.meta || {}).houseNo; if (!g || Math.abs(g.f - g.cur) < .2) return '';
+  const g = houseSuggestion(), no = (DB.meta || {}).houseNo; if (!g || Math.abs(g.f - g.cur) < .2 || reviewList().length >= 3) return '';
   if (no && no.until > today() && Math.abs(no.f - g.f) < .2) return '';
   return `<div class="card nudge"><b>Your soil dries slower than planned</b><p class="sub" style="margin:4px 0 10px">Across ${g.n} plants, a watering cycle took about ${g.f}× longer than the schedule assumes${g.cur !== 1 ? ' (on top of your current setting)' : ''}. Stretch every watering schedule to ×${g.f}? You can change it anytime in Settings.</p>
     <div class="btnrow"><button class="secondary" data-act="houseyes" data-f="${g.f}" data-n="${g.n}">Apply ×${g.f}</button><button class="secondary" data-act="houseno" data-f="${g.f}">Not now</button></div></div>`;
@@ -700,8 +719,9 @@ document.addEventListener('click', async e => {
   else if (a === 'done') doDone(d.p, d.k);
   else if (a === 'snooze') {
     const p = plant(d.p); sheetCtx = { pid: d.p, k: d.k, reason: null };
+    const mn = [2, 4, 7][Math.min(p.tasks[d.k].snoozes || 0, 2)]; // each repeat waits longer, so fewer taps
     openSheet(`<h3>Snooze ${TASKS[d.k].l.toLowerCase()}?</h3><div class="sub"><bdi>${esc(p.name)}</bdi> · Why? (optional) Then choose for how long.</div>
-      <button class="primary" style="margin:12px 0 4px" data-act="moist2">${svg('water')} Soil still moist · check in 2 days</button>
+      <button class="primary" style="margin:12px 0 4px" data-act="moist2" data-n="${mn}">${svg('water')} Soil still moist · check in ${mn} days</button>
       <div class="chips">${REASONS.map(r => `<button class="chip" data-act="reason" data-v="${r}">${r}</button>`).join('')}</div>
       <div class="btnrow"><button class="secondary" data-act="snoozego" data-n="1">1 day</button><button class="secondary" data-act="snoozego" data-n="2">2 days</button></div>
       <div class="btnrow"><input type="number" id="custom-n" min="1" max="90" inputmode="numeric" placeholder="Other (days)"><button class="secondary" data-act="snoozego" data-n="custom">Snooze</button></div>`);
@@ -787,6 +807,23 @@ document.addEventListener('click', async e => {
       location.reload();
     })();
   }
+  else if (a === 'review') {
+    const l = reviewList();
+    openSheet(`<h3>Suggested watering schedules</h3><div class="sub">Untick any you want to keep as they are.</div>
+      <div class="rev">${l.map(x => `<label class="chk"><input type="checkbox" checked data-id="${x.id}" data-to="${x.to}"><span><bdi>${esc(x.name)}</bdi><small>every ${x.from} → ${x.to} days</small></span></label>`).join('')}</div>
+      <button class="primary" style="margin-top:6px" data-act="reviewapply">${svg('check')} Apply selected</button>`);
+  }
+  else if (a === 'reviewapply') {
+    let n = 0;
+    document.querySelectorAll('.chk input').forEach(c => {
+      const p = plant(c.dataset.id), t = p && p.tasks.water, to = +c.dataset.to; if (!t) return;
+      if (c.checked) { const from = info(p, 'water').interval; t.manual = to; t.dismissed = null; n++;
+        addLog({ type: 'interval', pid: p.id, plant: p.name, species: p.species, task: 'water', date: today(), from, to, rec: recInterval(p, 'water'), via: 'review' }); }
+      else t.dismissed = to;
+    });
+    save(); closeSheet(); render(); toast(`${n} ${n === 1 ? 'schedule' : 'schedules'} updated`, false);
+  }
+  else if (a === 'reviewno') { DB.meta.reviewNo = { until: addDays(today(), 7) }; save(); render(); }
   else if (a === 'houseyes') { const from = houseMult(), f = +d.f; DB.meta.house = f; addLog({ type: 'house', from, to: f, n: +d.n, date: today() }); save(); render(); toast(`Watering schedules stretched ×${f}`, false); }
   else if (a === 'houseno') { DB.meta.houseNo = { until: addDays(today(), 14), f: +d.f }; save(); render(); }
   else if (a === 'housereset') { addLog({ type: 'house', from: houseMult(), to: 1, date: today() }); DB.meta.house = 1; save(); render(); }
@@ -794,7 +831,7 @@ document.addEventListener('click', async e => {
     const e = DB.log[+d.i], p = e && e.type === 'done' && plant(e.pid), t = p && p.tasks[e.task];
     if (t && e.prevLast) { t.last = e.prevLast; t.snoozeUntil = e.prevSnoozeUntil || null; t.snoozes = e.prevSnoozes || 0; DB.log.splice(+d.i, 1); lastUndo = null; save(); render(); toast(`${p.name}: back to due`, false); }
   }
-  else if (a === 'moist2') { sheetCtx.reason = MOIST; doSnooze(2); }
+  else if (a === 'moist2') { sheetCtx.reason = MOIST; doSnooze(+d.n || 2); }
   else if (a === 'exportall') { if (await shareJSON(`plants-backup-${today()}.json`, DB)) { DB.meta.lastBackup = today(); save(); render(); } }
   else if (a === 'nudgelater') { DB.meta.nudgeUntil = addDays(today(), 7); save(); render(); }
   else if (a === 'exportics') shareFile(`plants-care-${today()}.ics`, icsText(), 'text/calendar');
