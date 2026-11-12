@@ -317,8 +317,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-11-12.a';
-const BUILD = '12/11/2026 22:13'; // update on every deploy
+const VERSION = '2026-11-12.b';
+const BUILD = '12/11/2026 22:15'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -370,7 +370,6 @@ function vToday() {
   const byTask = {}; now.forEach(x => byTask[x.k] = (byTask[x.k] || 0) + 1);
   const todayTxt = now.length ? Object.entries(byTask).map(([k, n]) => `${TASKS[k].l} ×${n}`).join(', ') : 'Nothing';
   h += reviewCard();
-  h += houseCard();
   h += backupNudge();
   h += `<div class="tiles"><div class="tile ok-t">${svg('check')}<div><small>Due today</small><b>${todayTxt}</b></div></div>
     <button class="tile late-t" data-act="tab2" data-v="today">${svg('clock')}<div><b>${late.length}</b><small>Overdue</small></div></button></div>`;
@@ -472,8 +471,7 @@ function vForm() {
 function vSettings() {
   return `<h1>Settings</h1>
   ${statsCard()}
-  <div class="card"><b>Your home's pace</b><p class="sub">${houseMult() === 1 ? 'Watering schedules use the standard pace.' : `All watering schedules are stretched ×${houseMult()}.`} This captures how fast soil dries in your home. It applies to plants normally watered at least every two weeks; drought-tolerant ones (ZZ, snake plant, spurge…) keep their own schedule. The app suggests a change when your log shows a pattern.</p>
-    ${houseMult() !== 1 ? '<button class="secondary" data-act="housereset" style="width:100%">Reset to standard pace</button>' : ''}</div>
+  ${houseMult() !== 1 ? `<div class="card"><b>Global watering factor</b><p class="sub">All watering schedules are stretched ×${houseMult()}. Reset it to go back to per-plant schedules only.</p><button class="secondary" data-act="housereset" style="width:100%">Reset to standard pace</button></div>` : ''}
   <div class="card"><b>Care log</b><p class="sub">The app records every watering and snooze (${DB.log.length} so far) so the schedule can be improved. After a few weeks, export it and share it for suggestions.</p>
     <button class="secondary" data-act="exportlog" style="width:100%">Export log</button></div>
   <div class="card"><b>Calendar</b><p class="sub">Download your care schedule for the next 60 days and open the file to add it to your calendar. It's a snapshot, so export again after big changes.</p>
@@ -577,8 +575,8 @@ function estimateInterval(p) {
 }
 const reviewList = () => DB.plants.map(estimateInterval).filter(x => x && plant(x.id).tasks.water.dismissed !== x.to);
 function reviewCard() {
-  const l = reviewList(), no = (DB.meta || {}).reviewNo; if (l.length < 3 || (no && no.until > today())) return '';
-  return `<div class="card nudge"><b>Better schedules for ${l.length} plants</b><p class="sub" style="margin:4px 0 10px">Based on when you watered and how long the soil stayed moist. Review them and apply in one go.</p>
+  const l = reviewList(), no = (DB.meta || {}).reviewNo; if (!l.length || (no && no.until > today())) return '';
+  return `<div class="card nudge"><b>${l.length === 1 ? 'A better schedule for 1 plant' : `Better schedules for ${l.length} plants`}</b><p class="sub" style="margin:4px 0 10px">Based on when you watered and how long the soil stayed moist. Review them and apply in one go.</p>
     <div class="btnrow"><button class="secondary" data-act="review">Review</button><button class="secondary" data-act="reviewno">Not now</button></div></div>`;
 }
 function houseCard() {
