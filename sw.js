@@ -1,4 +1,4 @@
-const CACHE = 'plants-v5';
+const CACHE = 'plants-v6';
 const ASSETS = ['./', 'index.html', 'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 
 // bypass the HTTP cache so a new deploy is always picked up

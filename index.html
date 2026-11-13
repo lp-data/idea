@@ -132,6 +132,7 @@ nav button.on{color:var(--green-d);background:var(--green-soft)}
 .hint{text-align:center;margin:14px 0 0}
 .row.done{opacity:.78;box-shadow:none;border:1px dashed var(--line);background:transparent}.row.done .thumb{filter:saturate(.6)}.row.done .secondary{padding:8px 12px;font-size:14px}
 .chk{display:flex;align-items:center;gap:12px;margin:0;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px;color:var(--text);font-weight:500}.chk input{width:22px;height:22px;flex:none;margin:0;accent-color:var(--green)}.chk small{display:block;color:var(--muted);font-size:13px;font-weight:400}.rev{max-height:52vh;overflow:auto;margin:8px 0}
+#upd{position:fixed;top:calc(8px + env(safe-area-inset-top));inset-inline:16px;max-width:488px;margin:0 auto;z-index:25;background:var(--green);color:var(--on-green);border-radius:16px;padding:10px 12px 10px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 12px 28px -10px rgba(0,0,0,.4);font-weight:600}#upd[hidden]{display:none}#upd button{background:var(--card);color:var(--green-d);border-radius:12px;padding:8px 14px;font-weight:700}
 .enter>*{animation:rise .42s var(--ease) both}
 .enter>*:nth-child(2){animation-delay:.04s}.enter>*:nth-child(3){animation-delay:.08s}.enter>*:nth-child(4){animation-delay:.12s}.enter>*:nth-child(n+5){animation-delay:.16s}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
@@ -148,6 +149,7 @@ nav button.on{color:var(--green-d);background:var(--green-soft)}
   <button data-act="tab" data-v="plants"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21v-8M12 13c0-4 3-6.5 7-6.5 0 4-3 6.5-7 6.5zM12 15c0-3-2.2-5-5.5-5 0 3 2.2 5 5.5 5z"/></svg>Plants</button>
   <button data-act="tab" data-v="settings"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings</button>
 </nav>
+<div id="upd" hidden></div>
 <div id="sheet" hidden></div>
 <div id="toast" hidden></div>
 <input type="file" id="importfile" accept="application/json" hidden>
@@ -317,8 +319,8 @@ function when(due) {
 }
 
 /* ---------- storage ---------- */
-const VERSION = '2026-11-12.b';
-const BUILD = '12/11/2026 22:15'; // update on every deploy
+const VERSION = '2026-11-13.a';
+const BUILD = '13/11/2026 17:38'; // update on every deploy
 const KEY = 'plants_v1';
 let DB = { v: 1, plants: [], log: [] };
 try { const raw = localStorage.getItem(KEY); if (raw) DB = JSON.parse(raw); } catch (e) {}
@@ -798,6 +800,7 @@ document.addEventListener('click', async e => {
   else if (a === 'reload') {
     (async () => {
       try {
+        await fetch('index.html', { cache: 'reload' }); // refresh the HTTP cache too
         const rs = (await navigator.serviceWorker?.getRegistrations?.()) || [];
         await Promise.all(rs.map(r => r.unregister()));
         await Promise.all((await caches.keys()).map(k => caches.delete(k)));
@@ -872,6 +875,18 @@ document.addEventListener('change', async e => {
 });
 
 render();
+// tell the user when a newer version is live, and let them switch in one tap
+let lastCheck = 0;
+async function checkForUpdate() {
+  if (Date.now() - lastCheck < 30000) return; lastCheck = Date.now();
+  try {
+    const r = await fetch('index.html?cb=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const m = (await r.text()).match(/const VERSION = '([^']+)'/);
+    if (m && m[1] !== VERSION) { const u = $('#upd'); u.innerHTML = `<span>New version available</span><button data-act="reload">Update now</button>`; u.hidden = false; }
+  } catch (e) {}
+}
+setTimeout(checkForUpdate, 1500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
